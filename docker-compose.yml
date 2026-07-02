@@ -1,0 +1,77 @@
+# docker-compose.yml
+# Development stack — start with: docker compose up
+# Stop with: docker compose down
+# Stop and delete volumes: docker compose down -v
+
+version: "3.9"
+
+services:
+
+  # PostgreSQL 16
+  db:
+    image: postgres:16-alpine          # alpine = minimal image (~80MB vs ~400MB)
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marketpulse
+      POSTGRES_PASSWORD: marketpulse
+      POSTGRES_DB: marketpulse
+    ports:
+      - "5432:5432"                    # accessible at localhost:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # persist data between restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Redis 7
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"                    # accessible at localhost:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # FastAPI + APScheduler
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    env_file: .env                     # reads .env for all other variables
+    environment:
+      # Override database and cache URLs to use Docker service names
+      DATABASE_URL: postgresql://marketpulse:marketpulse@db:5432/marketpulse
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"                    # API accessible at http://localhost:8000
+      # OpenAPI docs at http://localhost:8000/docs
+    volumes:
+      - ./models:/app/models           # share trained models with host filesystem
+    depends_on:
+      db:
+        condition: service_healthy     # wait until Postgres is accepting connections
+      redis:
+        condition: service_healthy
+
+  # Streamlit Dashboard 
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    restart: unless-stopped
+    environment:
+      DASHBOARD_API_URL: http://api:8000/api/v1  # 'api' resolves to API container
+    ports:
+      - "8501:8501"                    # Dashboard at http://localhost:8501
+    depends_on:
+      - api
+
+# Named volumes 
+volumes:
+  postgres_data:                       # persists PostgreSQL data on host disk
