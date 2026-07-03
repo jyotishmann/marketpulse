@@ -1,0 +1,27 @@
+# Dockerfile.dashboard
+# Builds the image for the Streamlit dashboard.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install only the libraries the dashboard actually needs
+RUN pip install --no-cache-dir \
+    streamlit>=0.36.0 \
+    plotly>=5.22.0 \
+    httpx>=0.27.0 \
+    pydantic-settings>=2.3.0
+
+# Copy only the dashboard source — no API code needed
+COPY dashboard/ ./dashboard/
+
+# Expose Streamlit's default port
+EXPOSE 8501
+
+# Run the Streamlit app
+# --server.headless=true: no browser in a container
+# --server.address=0.0.0.0: listen on all interfaces (needed inside Docker)
+CMD ["streamlit", "run", "dashboard/app.py", \
+     "--server.port=8501", \
+     "--server.address=0.0.0.0", \
+     "--server.headless=true"]
