@@ -1,0 +1,42 @@
+# Dockerfile.api
+# Builds the image for the FastAPI server + APScheduler background jobs.
+
+FROM python:3.11-slim
+
+# Set working directory inside the container
+WORKDIR /app
+
+# Install system-level build dependencies for psycopg2
+# gcc: C compiler needed to build Python extension modules
+# libpq-dev: PostgreSQL client library headers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency manifest BEFORE source code (Docker layer caching)
+# pip install only reruns when pyproject.toml changes, not on code edits
+COPY pyproject.toml .
+
+# Install the package in editable mode with all core dependencies
+# The '.' means "install this package" (marketpulse/)
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Download VADER sentiment lexicon at build time — no runtime download needed
+RUN python -c "import nltk; nltk.download('vader_lexicon', quiet=True)"
+
+# Copy the actual source code
+COPY marketpulse/ ./marketpulse/
+COPY alembic.ini .
+
+# Create the models directory (will be bind-mounted in docker-compose)
+RUN mkdir -p /app/models
+
+# Expose the port uvicorn listens on
+EXPOSE 8000
+
+# Run the FastAPI app with uvicorn
+# --factory: create_app is a factory function, not a bare app instance
+# --reload would enable auto-reload on code changes (add in dev if desired)
+CMD ["uvicorn", "marketpulse.api.main:create_app", \
+     "--host", "0.0.0.0", "--port", "8000", "--factory"]
