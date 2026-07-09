@@ -7,20 +7,18 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system-level build dependencies for psycopg2
-# gcc: C compiler needed to build Python extension modules
-# libpq-dev: PostgreSQL client library headers
+# gcc, libpq-dev
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency manifest BEFORE source code (Docker layer caching)
-# pip install only reruns when pyproject.toml changes, not on code edits
 COPY pyproject.toml .
 
 # Install the package in editable mode with all core dependencies
-# The '.' means "install this package" (marketpulse/)
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir --upgrade pip hatchling && \
+    pip install --no-cache-dir ".[dev]"
 
 # Download VADER sentiment lexicon at build time — no runtime download needed
 RUN python -c "import nltk; nltk.download('vader_lexicon', quiet=True)"
@@ -36,7 +34,5 @@ RUN mkdir -p /app/models
 EXPOSE 8000
 
 # Run the FastAPI app with uvicorn
-# --factory: create_app is a factory function, not a bare app instance
-# --reload would enable auto-reload on code changes (add in dev if desired)
 CMD ["uvicorn", "marketpulse.api.main:create_app", \
      "--host", "0.0.0.0", "--port", "8000", "--factory"]
