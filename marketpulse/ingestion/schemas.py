@@ -7,7 +7,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-
 # Schema 1: Raw OHLCV price bar from yfinance
 
 class RawOHLCVRow(BaseModel):
@@ -106,7 +105,7 @@ class RawNewsItem(BaseModel):
     source_url: str
     published_at: datetime          # must be timezone-aware
 
-    # ── Field-level validators ─────────────────────────────────────────────────
+    # Field-level validators
 
     @field_validator("title")
     @classmethod
