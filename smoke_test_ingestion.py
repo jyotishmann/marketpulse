@@ -9,7 +9,7 @@ load_dotenv()
 # ────────────────────────────────────────────────────────────────────────────
 # SMOKE TEST 1: Config layer is healthy
 # ────────────────────────────────────────────────────────────────────────────
-from marketpulse.config import settings
+from marketpulse.config import settings  # noqa: E402
 
 print("=== Config ===")
 print("Ticker list:   ", settings.ticker_list)
@@ -20,7 +20,7 @@ print("RSS URLs:      ", settings.rss_url_list[:1], "... (first)")
 # ────────────────────────────────────────────────────────────────────────────
 # SMOKE TEST 2: yfinance stock connector
 # ────────────────────────────────────────────────────────────────────────────
-from marketpulse.ingestion import fetch_ohlcv, RawOHLCVRow
+from marketpulse.ingestion import RawOHLCVRow, fetch_ohlcv  # noqa: E402
 
 print("\n=== Stock Connector ===")
 bars = fetch_ohlcv("AAPL", period="1d", interval="1h")
@@ -38,7 +38,7 @@ if bars:
 # ────────────────────────────────────────────────────────────────────────────
 # SMOKE TEST 3: Pydantic validation — valid row
 # ────────────────────────────────────────────────────────────────────────────
-from datetime import UTC, datetime
+from datetime import UTC, datetime  # noqa: E402
 
 print("\n=== Schema Validation (valid row) ===")
 valid_row = RawOHLCVRow(
@@ -59,7 +59,7 @@ print("  ✓ Normalisation and validation pass")
 # ────────────────────────────────────────────────────────────────────────────
 # SMOKE TEST 4: Pydantic validation — invalid row (high < low)
 # ────────────────────────────────────────────────────────────────────────────
-from pydantic import ValidationError
+from pydantic import ValidationError  # noqa: E402
 
 print("\n=== Schema Validation (invalid row — high < low) ===")
 try:
@@ -81,7 +81,7 @@ except ValidationError as exc:
 # ────────────────────────────────────────────────────────────────────────────
 # SMOKE TEST 5: Pydantic validation — NaN price
 # ────────────────────────────────────────────────────────────────────────────
-import math
+import math  # noqa: E402
 
 print("\n=== Schema Validation (NaN price) ===")
 try:
@@ -101,7 +101,7 @@ except ValidationError as exc:
 # ────────────────────────────────────────────────────────────────────────────
 # SMOKE TEST 6: RSS news connector (requires internet)
 # ────────────────────────────────────────────────────────────────────────────
-from marketpulse.ingestion import fetch_feed, fetch_all_feeds, RawNewsItem
+from marketpulse.ingestion import RawNewsItem, fetch_all_feeds, fetch_feed  # noqa: E402
 
 print("\n=== News Connector ===")
 yahoo_aapl_rss = (

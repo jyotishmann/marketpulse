@@ -7,13 +7,17 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-import pandas as pd
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session
+import nltk
 
-from marketpulse.db import NewsArticle, StockPrice, TechnicalIndicator  # noqa: F401
-from marketpulse.ingestion.schemas import RawNewsItem, RawOHLCVRow
+nltk.download('vader_lexicon', quiet=True)  # downloads once, silent if already present
+
+import pandas as pd  # noqa: E402
+from nltk.sentiment.vader import SentimentIntensityAnalyzer  # noqa: E402
+from sqlalchemy.dialects.postgresql import insert as pg_insert  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
+
+from marketpulse.db import NewsArticle, StockPrice, TechnicalIndicator  # noqa: E402
+from marketpulse.ingestion.schemas import RawNewsItem, RawOHLCVRow  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
