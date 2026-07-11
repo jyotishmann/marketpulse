@@ -8,7 +8,7 @@ import nltk  # noqa: E402
 
 nltk.download('vader_lexicon', quiet=True)  # no-op if already downloaded
 
-from datetime import UTC, datetime, timedelta, timezone  # noqa: E402
+from datetime import UTC, datetime, timedelta, timezone  # noqa: E402, F401
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
