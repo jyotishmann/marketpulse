@@ -91,3 +91,6 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true                # print line numbers of uncovered lines
+
+[tool.hatch.build.targets.wheel]
+packages = ["marketpulse"]
