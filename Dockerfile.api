@@ -20,7 +20,8 @@ COPY pyproject.toml .
 
 # Install the package in editable mode with all core dependencies
 # The '.' means "install this package" (marketpulse/)
-RUN pip install --no-cache-dir -e ".[dev]"
+RUN pip install --no-cache-dir --upgrade pip hatchling && \
+    pip install --no-cache-dir ".[dev]"
 
 # Download VADER sentiment lexicon at build time — no runtime download needed
 RUN python -c "import nltk; nltk.download('vader_lexicon', quiet=True)"

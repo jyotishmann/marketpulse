@@ -3,7 +3,7 @@
 # Stop with: docker compose down
 # Stop and delete volumes: docker compose down -v
 
-version: "3.9"
+# version: "3.9"
 
 services:
 
