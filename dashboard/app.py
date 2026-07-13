@@ -778,3 +778,6 @@ def main() -> None:
 # The __name__ == "__main__" guard is conventional; Streamlit also works without it.
 if __name__ == "__main__":
     main()
+
+main()
+
