@@ -115,7 +115,7 @@ def create_app() -> FastAPI:
 
     logger.debug(
         "Routes registered: %s",
-        sorted({r.path for r in app.routes}),
+        sorted({r.path for r in app.routes if hasattr(r, "path")}),
     )
 
     return app
