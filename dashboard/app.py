@@ -47,7 +47,6 @@ _C_POS = "#66BB6A"       # green       — positive sentiment markers
 _C_NEG = "#EF5350"       # red         — negative sentiment markers
 _C_NEU = "#90A4AE"       # blue-grey   — neutral sentiment markers
 
-
 # ── Market status utility ─────────────────────────────────────────────────────
 
 def is_market_open() -> bool:
@@ -688,6 +687,7 @@ def main() -> None:
     6. Sleep 30s + rerun (if auto-refresh enabled)
     """
     # ── Page configuration (must be the very first Streamlit call) ─────────────
+    st.write("MAIN IN APP")
     st.set_page_config(
         page_title="MarketPulse",
         page_icon="📈",
