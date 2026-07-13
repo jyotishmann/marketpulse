@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime, timezone  # noqa: F401
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -26,7 +26,7 @@ class TestRawOHLCVRow:
 
     BASE_VALID = {
         "ticker": "AAPL",
-        "timestamp": datetime(2024, 1, 15, 14, 0, tzinfo=timezone.utc),
+        "timestamp": datetime(2024, 1, 15, 14, 0, tzinfo=UTC),
         "open": 182.10,
         "high": 183.45,
         "low": 181.90,
@@ -99,7 +99,7 @@ class TestRawNewsItem:
     BASE_VALID = {
         "title": "Apple reports record earnings",
         "source_url": "https://reuters.com/article/aapl-earnings",
-        "published_at": datetime(2024, 1, 15, 14, 30, tzinfo=timezone.utc),
+        "published_at": datetime(2024, 1, 15, 14, 30, tzinfo=UTC),
     }
 
     def test_valid_item_accepted(self):
@@ -140,7 +140,7 @@ class TestFetchOHLCV:
 
     def _make_yfinance_df(self, n: int = 5) -> pd.DataFrame:
         """Synthetic DataFrame that mimics yfinance.download() output."""
-        import numpy as np
+        import numpy as np  # noqa: F401
         base = datetime(2024, 1, 15, 14, 0, tzinfo=UTC)
         closes = [183.0 + i * 0.1 for i in range(n)]
         return pd.DataFrame({
