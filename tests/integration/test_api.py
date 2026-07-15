@@ -246,3 +246,40 @@ class TestMiddleware:
         r1 = api_client.get("/api/v1/stocks")
         r2 = api_client.get("/api/v1/stocks")
         assert r1.headers["x-request-id"] != r2.headers["x-request-id"]
+
+def test_create_app_returns_fastapi_instance():
+    from unittest.mock import patch
+
+    from fastapi import FastAPI
+    # Patch scheduler to prevent startup side effects
+    with patch("marketpulse.api.main.create_scheduler") as mock_sched:
+        mock_sched.return_value = MagicMock()
+        from marketpulse.api.main import create_app
+        app = create_app()
+    assert isinstance(app, FastAPI)
+    assert app.title == "MarketPulse API"
+
+def test_app_has_correct_version():
+    from unittest.mock import patch
+    with patch("marketpulse.api.main.create_scheduler"):
+        from marketpulse.api.main import create_app
+        app = create_app()
+    assert app.version == "0.1.0"
+
+def test_get_redis_dependency_returns_client():
+    from unittest.mock import patch
+
+    from marketpulse.api.dependencies import get_redis
+    with patch("marketpulse.api.dependencies.get_redis_client") as mock_fn:
+        mock_fn.return_value = MagicMock()
+        result = get_redis()
+    assert result is not None
+
+def test_get_ml_service_dependency_returns_service():
+    from unittest.mock import patch
+
+    from marketpulse.api.dependencies import get_ml_service
+    with patch("marketpulse.api.dependencies.get_prediction_service") as mock_fn:
+        mock_fn.return_value = MagicMock()
+        result = get_ml_service()
+    assert result is not None

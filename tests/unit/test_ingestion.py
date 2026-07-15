@@ -219,18 +219,6 @@ class TestFetchAllFeeds:
         ]
         return feed
 
-    def test_deduplicates_same_url_across_feeds(self):
-        """Same article URL appearing in two feeds should be stored once."""
-        from marketpulse.ingestion.news import fetch_all_feeds
-
-        with patch("feedparser.parse") as mock_fp:
-            mock_fp.return_value = self._make_feed(n_entries=3)
-            # Call with the same URL twice — each parse returns 3 items
-            result = fetch_all_feeds(["https://feed1.com", "https://feed1.com"])
-
-        # 3 unique items from the "same" feed, not 6
-        assert len(result) == 3
-
     def test_empty_url_list_returns_empty(self):
         """No configured feeds → return [] without making network calls."""
         from marketpulse.ingestion.news import fetch_all_feeds
@@ -241,24 +229,93 @@ class TestFetchAllFeeds:
         assert result == []
         mock_fp.assert_not_called()
 
+    def test_deduplicates_same_url_across_feeds(self):
+        from marketpulse.ingestion.news import fetch_all_feeds
+
+        def make_feed():
+            feed = MagicMock()
+            feed.bozo = False
+            entries = []
+            for i in range(3):
+                entry = MagicMock()
+                entry.title = f"Headline {i}"
+                entry.link = f"https://news.com/article/{i}"
+                entry.get = lambda k, d="", i=i: {
+                    "title": f"Headline {i}",
+                    "link": f"https://news.com/article/{i}"
+                }.get(k, d)
+                entry.published_parsed = None
+                entry.published = None
+                entries.append(entry)
+            feed.entries = entries
+            return feed
+
+        with patch("feedparser.parse", return_value=make_feed()):
+            result = fetch_all_feeds(["https://feed1.com", "https://feed1.com"])
+
+        assert len(result) == 3
+
     def test_sorted_newest_first(self):
-        """fetch_all_feeds should return articles sorted newest-first."""
         import time as _time
 
         from marketpulse.ingestion.news import fetch_all_feeds
 
-        older = _time.gmtime(0)   # epoch (Jan 1 1970)
-        newer = _time.gmtime()    # now
+        older_time = _time.gmtime(0)    # epoch — Jan 1 1970
+        newer_time = _time.gmtime()     # now
 
         feed = MagicMock()
         feed.bozo = False
-        feed.entries = [
-            MagicMock(title="Old article", link="https://news.com/old", published_parsed=older),
-            MagicMock(title="New article", link="https://news.com/new", published_parsed=newer),
-        ]
+
+        old_entry = MagicMock()
+        old_entry.published_parsed = older_time
+        old_entry.get = lambda k, d="": {
+            "title": "Old article here",
+            "link": "https://news.com/old",
+            "published_parsed": older_time,   # ← ADD THIS
+        }.get(k, d)
+
+        new_entry = MagicMock()
+        new_entry.published_parsed = newer_time
+        new_entry.get = lambda k, d="": {
+            "title": "New article here",
+            "link": "https://news.com/new",
+            "published_parsed": newer_time,   # ← ADD THIS
+        }.get(k, d)
+
+        feed.entries = [old_entry, new_entry]
 
         with patch("feedparser.parse", return_value=feed):
             result = fetch_all_feeds(["https://news.com/rss"])
 
-        # Newest article should come first
-        assert result[0].title == "New article"
+        assert len(result) == 2
+        assert result[0].title == "New article here"
+
+def test_fetch_feed_returns_empty_on_bozo_no_entries():
+    from unittest.mock import MagicMock, patch
+
+    from marketpulse.ingestion.news import fetch_feed
+    mock_feed = MagicMock()
+    mock_feed.bozo = True
+    mock_feed.entries = []
+    mock_feed.bozo_exception = Exception("bad xml")
+    with patch("feedparser.parse", return_value=mock_feed):
+        result = fetch_feed("https://bad-feed.com/rss")
+    assert result == []
+
+def test_fetch_feed_continues_on_bozo_with_entries():
+    import time as _time
+    from unittest.mock import MagicMock, patch
+
+    from marketpulse.ingestion.news import fetch_feed
+    mock_feed = MagicMock()
+    mock_feed.bozo = True
+    mock_feed.bozo_exception = Exception("minor xml issue")
+    entry = MagicMock()
+    entry.get = lambda k, d="": {
+        "title": "Valid headline here", "link": "https://news.com/1"
+    }.get(k, d)
+    entry.published_parsed = _time.gmtime()
+    mock_feed.entries = [entry]
+    with patch("feedparser.parse", return_value=mock_feed):
+        result = fetch_feed("https://slightly-bad-feed.com/rss")
+    assert len(result) == 1

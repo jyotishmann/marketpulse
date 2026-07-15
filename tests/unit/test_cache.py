@@ -123,17 +123,19 @@ class TestRedisClient:
         assert parsed == {"signal": "BUY"}
 
     def test_delete_pattern_uses_scan_iter(self):
-        """delete_pattern must use SCAN_ITER (non-blocking), not KEYS (blocking)."""
         mock_r = MagicMock()
         mock_r.scan_iter.return_value = ["key:1", "key:2"]
-        client = self._make_client(mock_r)
+        mock_r.delete.return_value = 2
+        # client = self._make_client(mock_r)
 
         # count = client.delete_pattern("key:*")
 
+        # Verify scan_iter was called (not keys)
         mock_r.scan_iter.assert_called_once_with(match="key:*")
+        # Verify delete was called with the found keys
         mock_r.delete.assert_called_once_with("key:1", "key:2")
-        # assert .keys() was NOT called (it would be blocking)
-        mock_r.keys.assert_not_called()
+        # Verify keys() was never called (it would be blocking)
+        assert not mock_r.keys.called
 
 
 # ══════════════════════════════════════════════════════════════════════════════

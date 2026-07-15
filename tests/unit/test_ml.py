@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 from sklearn.pipeline import Pipeline
 
-from marketpulse.ml.features import FEATURE_COLS, LOOKAHEAD, _make_labels
+from marketpulse.ml.features import FEATURE_COLS, LOOKAHEAD, _make_labels  # noqa: F401
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Label generation tests
@@ -28,17 +28,29 @@ class TestMakeLabels:
     """Tests for the forward-looking label generator."""
 
     def test_last_n_rows_are_nan(self):
-        """Last LOOKAHEAD rows have no future data → must be NaN."""
-        close = pd.Series(range(50, 100, dtype=float))  # 50 values, 50–99
+        import pandas as pd
+
+        from marketpulse.ml.features import LOOKAHEAD, _make_labels  # noqa: F811
+        close = pd.Series([float(i) for i in range(50, 100)])
         labels = _make_labels(close)
-        assert labels.iloc[-LOOKAHEAD:].isna().all()
+        # Last LOOKAHEAD rows should all be NaN
+        last_rows = labels.iloc[-LOOKAHEAD:]
+        assert last_rows.isna().all(), (
+            f"Expected last {LOOKAHEAD} rows to be NaN, got: {last_rows.tolist()}"
+        )
 
     def test_non_trailing_rows_have_labels(self):
-        """All rows except the last LOOKAHEAD should have a label."""
-        close = pd.Series(range(50, 100, dtype=float))
+        import pandas as pd
+
+        from marketpulse.ml.features import LOOKAHEAD, _make_labels  # noqa: F811
+        close = pd.Series([float(i) for i in range(50, 100)])
         labels = _make_labels(close)
+        # All rows except last LOOKAHEAD should have a value
         non_trailing = labels.iloc[:-LOOKAHEAD]
-        assert non_trailing.notna().all()
+        assert non_trailing.notna().all(), (
+            f"Expected non-trailing rows to have labels, got NaN at: "
+            f"{non_trailing[non_trailing.isna()].index.tolist()}"
+        )
 
     def test_labels_only_contain_valid_values(self):
         """Labels must be exactly -1.0, 0.0, or 1.0 (or NaN for trailing)."""
@@ -68,23 +80,35 @@ class TestMakeLabels:
 class TestBuildFeatureMatrix:
     """Tests for feature matrix construction — uses mocked DB session."""
 
-    def test_empty_db_returns_empty_matrix(self, mock_db):
-        """No rows in DB → return empty DataFrames."""
-        from marketpulse.ml.features import build_feature_matrix
+    def test_empty_db_returns_empty_matrix(self):
+        from unittest.mock import MagicMock  # noqa: F811
 
-        X, y, cols = build_feature_matrix("AAPL", mock_db, lookback_days=90)
+        from marketpulse.ml.features import FEATURE_COLS, build_feature_matrix
+
+        # Build a mock session that returns empty list for any .all() call
+        mock_session = MagicMock()
+        # price query returns empty
+        mock_session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+
+        X, y, cols = build_feature_matrix("AAPL", mock_session, lookback_days=90)
 
         assert X.empty
         assert y.empty
         assert cols == FEATURE_COLS
 
-    def test_insufficient_rows_returns_empty(self, mock_db):
-        """Fewer than 50 usable feature rows → return empty (enforced in function)."""
-        # The mock_db fixture returns [] for .all() calls
-        # This simulates no data → feature matrix will be empty
-        from marketpulse.ml.features import build_feature_matrix
+    def test_insufficient_rows_returns_empty(self):
+        from unittest.mock import MagicMock  # noqa: F811
 
-        X, y, _ = build_feature_matrix("AAPL", mock_db, lookback_days=90)
+        from marketpulse.ml.features import (  # noqa: F401
+            FEATURE_COLS,
+            build_feature_matrix,
+        )
+
+        mock_session = MagicMock()
+        # Return empty list — simulates no price data
+        mock_session.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
+
+        X, y, _ = build_feature_matrix("AAPL", mock_session, lookback_days=90)
         assert X.empty
 
 
@@ -241,3 +265,52 @@ class TestPredictionService:
 
         assert not service._classifiers
         assert not service._anomaly_detectors
+
+def test_feature_cols_count():
+    from marketpulse.ml.features import FEATURE_COLS
+    assert len(FEATURE_COLS) == 8
+
+def test_make_labels_length_matches_input():
+    import pandas as pd
+
+    from marketpulse.ml.features import _make_labels
+    close = pd.Series([100.0 + i for i in range(50)])
+    labels = _make_labels(close)
+    assert len(labels) == len(close)
+
+def test_lookahead_constant_is_positive():
+    from marketpulse.ml.features import LOOKAHEAD  # noqa: F811
+    assert LOOKAHEAD > 0
+
+def test_threshold_constant_is_positive():
+    from marketpulse.ml.features import THRESHOLD
+    assert 0 < THRESHOLD < 1
+
+def test_save_anomaly_detector_writes_file(feature_df, tmp_path, monkeypatch):
+    from unittest.mock import MagicMock  # noqa: F811
+    monkeypatch.setenv("MODEL_DIR", str(tmp_path))
+    from marketpulse.config import get_settings
+    get_settings.cache_clear()
+    from marketpulse.ml.anomaly import save_anomaly_detector, train_anomaly_detector
+    iso = train_anomaly_detector(feature_df, "AAPL_TEST")
+    mock_session = MagicMock()
+    mock_session.query.return_value.filter.return_value.update.return_value = 0
+    path = save_anomaly_detector(iso, "AAPL_TEST", mock_session)
+    import os  # noqa: F811
+    assert os.path.exists(path)
+    get_settings.cache_clear()
+
+def test_load_anomaly_detector_returns_none_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("MODEL_DIR", str(tmp_path))
+    from marketpulse.config import get_settings
+    get_settings.cache_clear()
+    from marketpulse.ml.anomaly import load_anomaly_detector
+    result = load_anomaly_detector("NONEXISTENT")
+    assert result is None
+    get_settings.cache_clear()
+
+def test_build_feature_matrix_feature_cols_constant():
+    from marketpulse.ml.features import FEATURE_COLS, LOOKAHEAD, THRESHOLD  # noqa: F811
+    assert len(FEATURE_COLS) == 8
+    assert LOOKAHEAD > 0
+    assert 0 < THRESHOLD < 1
