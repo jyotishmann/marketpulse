@@ -56,6 +56,9 @@ test = [
 [tool.ruff]
 target-version = "py311"
 line-length = 88                   # same as black's default
+exclude = [
+    "smoke_test_*.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "C4", "UP"]
@@ -94,3 +97,4 @@ show_missing = true                # print line numbers of uncovered lines
 
 [tool.hatch.build.targets.wheel]
 packages = ["marketpulse"]
+
