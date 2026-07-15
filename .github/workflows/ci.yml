@@ -10,12 +10,22 @@ on:
   pull_request:
     branches: [main]              # every PR targeting main
 
+# Top-level env vars — inherited by all jobs and steps
+# Points at docker-compose.test.yml ports (5433, 6380)
+env:
+  DATABASE_URL: postgresql://marketpulse:marketpulse@localhost:5433/marketpulse_test
+  REDIS_URL: redis://localhost:6380/1
+  TICKERS: "AAPL,MSFT"
+  MODEL_DIR: /tmp/models
+  LOG_LEVEL: WARNING
+
 jobs:
 
   # Job 1: Lint & Format 
   lint:
     name: "Lint & Format"
     runs-on: ubuntu-latest
+    timeout-minutes: 5     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,6 +34,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # Key includes pyproject.toml hash — cache busts when deps change
+          key: ${{ runner.os }}-pip-lint-${{ hashFiles('pyproject.toml') }}
+          # Fallback: use any previous pip cache for this OS
+          restore-keys: |
+            ${{ runner.os }}-pip-lint-
 
       - name: Install ruff
         run: pip install "ruff>=0.5.0"
@@ -38,12 +58,22 @@ jobs:
   type-check:
     name: "Type Check"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint                   # only run if lint passes
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-dev-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-dev-
 
       - name: Install dependencies with dev extras
         run: pip install -e ".[dev]"
@@ -55,34 +85,39 @@ jobs:
   test:
     name: "Test & Coverage"
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: lint                   # only run if lint passes
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      - name: Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-test-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-test-
+
       - name: Start test services (PostgreSQL + Redis)
-        run: docker compose -f docker-compose.test.yml up -d
+        run: docker compose -f docker-compose.test.yml up -d --wait
 
-      - name: Wait for services to be ready
-        run: sleep 10
+      - name: Apply migrations to test database
+        # DATABASE_URL inherited from top-level env block (points to port 5433)
+        run: alembic upgrade head
 
-      - name: Install dependencies with test extras
+      - name: Install test dependencies
         run: pip install -e ".[test]"
 
-      - name: Download NLTK data
+      - name: Download NLTK VADER lexicon
+        # Bake into the test environment — avoids runtime downloads in tests
         run: python -c "import nltk; nltk.download('vader_lexicon', quiet=True)"
 
       - name: Run tests with coverage
-        env:
-          # Point tests at the test containers (different ports from dev)
-          DATABASE_URL: postgresql://marketpulse:marketpulse@localhost:5433/marketpulse_test
-          REDIS_URL: redis://localhost:6380/1
-          TICKERS: "AAPL,MSFT"
-          MODEL_DIR: "/tmp/models"
-          LOG_LEVEL: "WARNING"
         run: |
           pytest tests/ -v \
             --cov=marketpulse \
@@ -90,13 +125,18 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=80
 
-      - name: Stop test services
-        if: always()              # run even if tests fail — clean up containers
+      - name: Stop and remove test services
+        # always(): runs even if the 'Run tests' step failed
+        # Prevents orphaned containers from interfering with future CI runs
+        if: always()
         run: docker compose -f docker-compose.test.yml down
 
-      - name: Upload coverage to Codecov
+      - name: Upload coverage report to Codecov
         uses: codecov/codecov-action@v4
         if: success()
         with:
           file: ./coverage.xml
-          fail_ci_if_error: false  # don't fail CI if Codecov upload fails
+          # fail_ci_if_error: false — don't fail CI if Codecov upload fails
+          # (network issue at Codecov shouldn't block your merge)
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
