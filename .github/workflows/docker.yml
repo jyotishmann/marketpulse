@@ -1,0 +1,85 @@
+# .github/workflows/docker.yml
+# Build and push Docker images to GitHub Container Registry (GHCR).
+# Triggers only on pushes to main (i.e., after a PR is merged and CI passed).
+#
+# Images pushed:
+#   ghcr.io/YOUR_USERNAME/marketpulse-api:latest
+#   ghcr.io/YOUR_USERNAME/marketpulse-api:{commit-sha}
+#   ghcr.io/YOUR_USERNAME/marketpulse-dashboard:latest
+#   ghcr.io/YOUR_USERNAME/marketpulse-dashboard:{commit-sha}
+#
+# No additional secrets required — GITHUB_TOKEN has GHCR write access.
+
+name: Docker
+
+on:
+  push:
+    branches: [main]        # only on merge to main, not feature branches
+
+jobs:
+
+  build-and-push:
+    name: "Build & Push Images"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30     # generous for two Docker builds with caching
+
+    # Required permissions for pushing to GHCR
+    permissions:
+      contents: read        # checkout the repo
+      packages: write       # push to GHCR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Log in to GHCR using the auto-provisioned GITHUB_TOKEN
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}           # the GitHub user who triggered the push
+          password: ${{ secrets.GITHUB_TOKEN }}  # auto-provisioned — no setup needed
+
+      # Set up BuildKit (Docker's modern build backend)
+      # Required for --cache-from / --cache-to with type=gha
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── API image ───────────────────────────────────────────────────────────
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/marketpulse-api:latest
+            ghcr.io/${{ github.repository_owner }}/marketpulse-api:${{ github.sha }}
+          # Docker layer caching via GitHub Actions cache storage.
+          # Unchanged layers (e.g. pip install when deps haven't changed)
+          # are restored from cache instead of rebuilt — saves 3-5 minutes.
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      # ── Dashboard image ─────────────────────────────────────────────────────
+      - name: Build and push Dashboard image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.dashboard
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/marketpulse-dashboard:latest
+            ghcr.io/${{ github.repository_owner }}/marketpulse-dashboard:${{ github.sha }}
+          cache-from: type=gha,scope=dashboard
+          cache-to: type=gha,scope=dashboard,mode=max
+
+      # Print image digests for the build summary
+      - name: Image build summary
+        run: |
+          echo "## Docker Images Built" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Tags |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| API | \`latest\`, \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dashboard | \`latest\`, \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
