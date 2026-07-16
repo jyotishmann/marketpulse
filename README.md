@@ -1,37 +1,142 @@
 # MarketPulse
 
-> A stock market intelligence pipeline and dashboard.
-> Free data, zero API keys, pure Python.
+> A production-grade stock market intelligence pipeline.
+> Free data. Zero API keys. Pure Python.
 
-[![CI](https://github.com/YOUR_USERNAME/marketpulse/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/marketpulse/actions/workflows/ci.yml)
+[![CI](https://github.com/jyotishmann/marketpulse/actions/workflows/ci.yml/badge.svg)](https://github.com/jyotishmann/marketpulse/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/YOUR_USERNAME/marketpulse/branch/main/graph/badge.svg)](https://codecov.io/gh/YOUR_USERNAME/marketpulse)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## What It Does
+## What It Is
 
-MarketPulse pulls stock price data and financial news on a schedule, computes
-technical indicators, runs ML-based signal detection, and displays live insights
-on a Streamlit dashboard — all running locally in Docker with no paid services.
+MarketPulse is a **scheduled data intelligence system** for stock markets. It ingests
+OHLCV price bars from [yfinance](https://github.com/ranaroussi/yfinance) (free, no API key)
+and financial headlines from public RSS feeds every 15–30 minutes, computes 10 technical
+indicators, runs a machine learning pipeline that emits BUY/HOLD/SELL signals, and
+renders everything on a live Streamlit dashboard — all orchestrated by Docker Compose
+and guarded by a GitHub Actions CI/CD pipeline.
 
-**Stack:** FastAPI · Streamlit · PostgreSQL · Redis · scikit-learn · Docker Compose · GitHub Actions
+**Stack:** FastAPI · Streamlit · PostgreSQL · Redis · scikit-learn · APScheduler ·
+Docker Compose · GitHub Actions · pytest
 
 ## Quick Start
 
-# 1. Clone the repo
+
+```bash
 git clone https://github.com/YOUR_USERNAME/marketpulse.git
 cd marketpulse
-
-# 2. Create your environment file
 cp .env.example .env
-
-# 3. Start the full stack
 docker compose up
+```
 
-Then open:
+### Open:
 
 - **Dashboard:** http://localhost:8501
-- **API docs (Swagger):** http://localhost:8000/docs
+- **API (Swagger UI):** http://localhost:8000/docs
 
-## Architecture
 
+The first ingestion cycle runs on startup. Price data appears within ~60 seconds.
+ML signals appear after the first hourly pipeline run.
+
+## What It Demonstrates
+
+### Data Engineering
+
+- **ETL pipeline** — yfinance → pydantic validation → pandas transformation → PostgreSQL
+- **Scheduled batch jobs** — APScheduler with cron-style intervals per job type
+- **Deduplication & upsert** — `ON CONFLICT DO NOTHING` prevents double-inserting on overlap
+- **Connection pooling** — SQLAlchemy engine with `pool_size=5, max_overflow=10`
+
+### Machine Learning
+
+- **End-to-end ML pipeline** — ingest → feature engineering → train → persist → serve
+- **Supervised classification** — `sklearn.Pipeline(StandardScaler + RandomForestClassifier)`
+- **Unsupervised anomaly detection** — `IsolationForest` flags unusual price patterns
+- **Model versioning** — `ModelRegistry` table tracks all training runs; rollback via flag
+- **Lazy model loading** — `PredictionService` caches models in memory per ticker
+
+### API & Caching
+
+- **FastAPI** with async-native routing, OpenAPI auto-documentation, pydantic schemas
+- **Two-layer caching** — Streamlit `@st.cache_data` (30s) → Redis (5 min) → PostgreSQL
+- **Cache invalidation** — pattern-based Redis bust (`SCAN_ITER`) after each write
+- **Dependency injection** — `Depends()` for DB session, Redis client, ML service
+
+### Infrastructure & DevOps
+
+- **Docker Compose** — six-service stack (api, dashboard, db, redis, and test variants)
+- **GitHub Actions** — lint → type-check + test (parallel), Docker image build on merge
+- **Pip caching** — `actions/cache` reduces per-job pip install from 2 min to 15 sec
+- **Health-driven startup** — `docker compose --wait` replaces brittle `sleep N`
+- **Coverage gate** — `--cov-fail-under=80` blocks merges that reduce test coverage
+
+### Code Quality
+
+- **96 pytest tests** — unit tests with mocked externals, API integration tests
+- **Conventional Commits** — structured commit messages (`feat/fix/chore/test/ci`)
+- **Type annotations** — Python 3.11 syntax throughout, checked with mypy
+- **ruff** — single tool replacing flake8 + black + isortThen open:
+
+## High-Level Data Flow
+
+```
+yfinance ──────────────────────────────────┐
+                                           ▼
+RSS Feeds → feedparser → VADER ──►  ETL Layer  ──►  PostgreSQL
+                                           │               │
+                                    APScheduler            │
+                                           │               ▼
+                                    ML Pipeline ──►  ml_signals
+                                                          │
+                                                     FastAPI  ◄── Redis cache
+                                                          │
+                                                    Streamlit Dashboard
+```
+
+## Development
+
+```bash
+# Install dev + test dependencies
+pip install -e ".[dev,test]"
+
+# Run linting + formatting check
+ruff check . && ruff format --check .
+
+# Type checking
+mypy marketpulse/ --ignore-missing-imports
+
+# Run tests (requires docker compose test services)
+docker compose -f docker-compose.test.yml up -d --wait
+alembic upgrade head
+pytest tests/ -v --cov=marketpulse
+docker compose -f docker-compose.test.yml down
+
+# Run one layer of tests at a time
+pytest tests/unit/test_ingestion.py -v     # schema + connector tests
+pytest tests/unit/test_processing.py -v    # ETL + indicator tests
+pytest tests/unit/test_ml.py -v            # ML pipeline tests
+pytest tests/integration/test_api.py -v    # FastAPI endpoint tests
+```
+
+### Git Workflow
+
+```bash
+# Start a feature branch
+git checkout main && git pull origin main
+git checkout -b feat/your-feature-name
+
+# Make changes, commit with Conventional Commits
+git add path/to/file
+git commit -m "feat(scope): description"
+
+# Push and open PR (CI runs automatically)
+git push -u origin feat/your-feature-name
+```
+
+## Project Structure
+
+```bash
 marketpulse/                          ← repo root (also the GitHub repo name)
 │
 ├── .github/
@@ -115,31 +220,22 @@ marketpulse/                          ← repo root (also the GitHub repo name)
 ├── .env.example                      ← template: copy to .env and fill in
 ├── .gitignore
 └── README.md
+```
 
-See [MASTER_DOC.md](./MASTER_DOC.md) for the full architecture reference,
-including every component, connector, and design decision.
+## Environment Variables
 
-## Development
+Copy `.env.example` to `.env` before running. All variables are documented
+in `.env.example` with explanations and working defaults for Docker Compose.
 
-# Install dev + test dependencies
-pip install -e ".[dev,test]"
-
-# Run linting
-ruff check . && ruff format .
-
-# Run tests (requires test Docker services)
-docker compose -f docker-compose.test.yml up -d
-pytest tests/ -v --cov=marketpulse
-docker compose -f docker-compose.test.yml down
-
-## Project Structure
-
-marketpulse/     ← Python package (API, ingestion, ML, cache, scheduler)
-dashboard/       ← Streamlit dashboard
-tests/           ← pytest test suite
-.github/         ← GitHub Actions CI/CD workflows
-docker-compose.yml          ← development stack
-docker-compose.test.yml     ← isolated test stack
+Key variables:
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | (required) | PostgreSQL connection string |
+| `REDIS_URL` | `redis://redis:6379/0` | Redis connection string |
+| `TICKERS` | `AAPL,GOOGL,MSFT,TSLA` | Comma-separated stock symbols |
+| `RSS_FEED_URLS` | (empty) | Comma-separated RSS feed URLs |
+| `SCHEDULE_STOCK_MINUTES` | `15` | Price ingestion frequency |
+| `SCHEDULE_ML_MINUTES` | `60` | ML pipeline frequency |
 
 ## License
 

@@ -48,8 +48,9 @@ class PredictionService:
 
     def __init__(self) -> None:
         # In-memory model caches — loaded lazily on first .predict() call
-        self._classifiers: dict[str, object] = {}         # ticker → fitted Pipeline
-        self._anomaly_detectors: dict[str, object] = {}   # ticker → fitted IsolationForest
+        from typing import Any
+        self._classifiers: dict[str, Any] = {}          # ticker → fitted Pipeline
+        self._anomaly_detectors: dict[str, Any] = {}    # ticker → fitted IsolationForest
 
     def predict(
         self,
@@ -107,8 +108,8 @@ class PredictionService:
 
         # ── Run classifier ─────────────────────────────────────────────────────
         # predict_proba: [[P(SELL), P(HOLD), P(BUY)]] (order matches clf.classes_)
-        proba = clf.predict_proba(X_row)[0]  # type: ignore[union-attr]
-        pred_int = int(clf.predict(X_row)[0])  # type: ignore[union-attr]
+        proba = clf.predict_proba(X_row)[0]
+        pred_int = int(clf.predict(X_row)[0])
         signal = SIGNAL_MAP.get(pred_int, "HOLD")
         confidence = round(float(max(proba)), 4)
 
@@ -116,7 +117,7 @@ class PredictionService:
         is_anomaly = False
         if iso is not None:
             # IsolationForest.predict() returns -1 (anomaly) or 1 (normal)
-            iso_pred = int(iso.predict(X_row)[0])  # type: ignore[union-attr]
+            iso_pred = int(iso.predict(X_row)[0])
             is_anomaly = iso_pred == -1
 
         result: PredictionResult = {

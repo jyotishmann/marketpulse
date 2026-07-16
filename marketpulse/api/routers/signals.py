@@ -43,7 +43,7 @@ async def get_latest_signal(
 
     cached = redis.get_json(cache_key)
     if cached is not None:
-        return cached  # type: ignore[return-value]
+        return cached  # type: ignore[return-value, no-any-return]
 
     row = (
         db.query(MLSignal)
@@ -104,7 +104,7 @@ async def get_signals(
 
     cached = redis.get_json(cache_key)
     if cached is not None:
-        return cached  # type: ignore[return-value]
+        return cached  # type: ignore[return-value, no-any-return]
 
     rows = (
         db.query(MLSignal)
