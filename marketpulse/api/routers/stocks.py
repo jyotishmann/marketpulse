@@ -73,7 +73,7 @@ async def get_prices(
     cached = redis.get_json(cache_key)
     if cached is not None:
         logger.debug("Cache HIT for %s", cache_key)
-        return cached  # type: ignore[return-value]
+        return cached  # type: ignore[return-value, no-any-return]
 
     # ── Cache miss: query PostgreSQL ──────────────────────────────────────────
     logger.debug("Cache MISS for %s — querying DB", cache_key)

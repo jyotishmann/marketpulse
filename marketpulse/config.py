@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # ── Database ───────────────────────────────────────────────────────────────
-    database_url: str            # required — no default (app must fail if missing)
+    database_url: str = "postgresql://marketpulse:marketpulse@db:5432/marketpulse"  # required — no default (app must fail if missing)
 
     # ── Redis ──────────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
