@@ -126,9 +126,9 @@ class TestRedisClient:
         mock_r = MagicMock()
         mock_r.scan_iter.return_value = ["key:1", "key:2"]
         mock_r.delete.return_value = 2
-        # client = self._make_client(mock_r)
+        client = self._make_client(mock_r)
 
-        # count = client.delete_pattern("key:*")
+        count = client.delete_pattern("key:*")  # noqa: F841
 
         # Verify scan_iter was called (not keys)
         mock_r.scan_iter.assert_called_once_with(match="key:*")
