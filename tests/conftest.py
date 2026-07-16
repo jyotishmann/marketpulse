@@ -14,6 +14,7 @@ import pytest
 
 # ── Synthetic data factories (used by fixtures below) ─────────────────────────
 
+
 def _make_ohlcv_df(n: int = 50, ticker: str = "AAPL") -> pd.DataFrame:
     """
     Generate a synthetic OHLCV DataFrame with n rows.
@@ -30,15 +31,17 @@ def _make_ohlcv_df(n: int = 50, ticker: str = "AAPL") -> pd.DataFrame:
     base_ts = datetime(2024, 1, 2, 14, 30, tzinfo=UTC)
     timestamps = [base_ts + timedelta(minutes=15 * i) for i in range(n)]
 
-    return pd.DataFrame({
-        "ticker": [ticker] * n,
-        "timestamp": timestamps,
-        "open": opens,
-        "high": highs,
-        "low": lows,
-        "close": closes,
-        "volume": np.random.randint(100_000, 2_000_000, n).tolist(),
-    })
+    return pd.DataFrame(
+        {
+            "ticker": [ticker] * n,
+            "timestamp": timestamps,
+            "open": opens,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": np.random.randint(100_000, 2_000_000, n).tolist(),
+        }
+    )
 
 
 def _make_feature_df(n: int = 100) -> pd.DataFrame:
@@ -55,12 +58,13 @@ def _make_feature_df(n: int = 100) -> pd.DataFrame:
         columns=FEATURE_COLS,
     )
     # Scale features to realistic ranges
-    df["rsi_14"] = 50.0 + df["rsi_14"] * 15.0       # roughly 20–80
+    df["rsi_14"] = 50.0 + df["rsi_14"] * 15.0  # roughly 20–80
     df["bb_position"] = df["bb_position"].abs() % 1.0  # 0–1
     return df
 
 
 # ── Data fixtures ──────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def ohlcv_df() -> pd.DataFrame:
@@ -99,19 +103,26 @@ def raw_ohlcv_rows():
         RawOHLCVRow(
             ticker="AAPL",
             timestamp=base,
-            open=182.10, high=183.45, low=181.90, close=183.00,
+            open=182.10,
+            high=183.45,
+            low=181.90,
+            close=183.00,
             volume=1_234_567,
         ),
         RawOHLCVRow(
             ticker="AAPL",
             timestamp=base + timedelta(minutes=15),
-            open=183.00, high=183.80, low=182.50, close=183.50,
+            open=183.00,
+            high=183.80,
+            low=182.50,
+            close=183.50,
             volume=987_654,
         ),
     ]
 
 
 # ── Mock service fixtures ──────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_db():
@@ -127,18 +138,11 @@ def mock_db():
     session = MagicMock()
     # Common query chain: .query(Model).filter(...).order_by(...).limit(...).all()
     (
-        session.query.return_value
-        .filter.return_value
-        .order_by.return_value
-        .limit.return_value
-        .all.return_value
+        session.query.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value
     ) = []
     # .query(Model).filter(...).order_by(...).first()
     (
-        session.query.return_value
-        .filter.return_value
-        .order_by.return_value
-        .first.return_value
+        session.query.return_value.filter.return_value.order_by.return_value.first.return_value
     ) = None
     return session
 
@@ -152,9 +156,9 @@ def mock_redis():
     Tests that want a cache hit set mock_redis.get_json.return_value themselves.
     """
     client = MagicMock()
-    client.ping.return_value = True        # Redis is reachable
-    client.get_json.return_value = None    # cache miss by default
-    client.set_json.return_value = True    # writes succeed
+    client.ping.return_value = True  # Redis is reachable
+    client.get_json.return_value = None  # cache miss by default
+    client.set_json.return_value = True  # writes succeed
     client.get.return_value = None
     client.set.return_value = True
     client.delete.return_value = 1
@@ -163,6 +167,7 @@ def mock_redis():
 
 
 # ── FastAPI TestClient fixture ─────────────────────────────────────────────────
+
 
 @pytest.fixture
 def api_client(mock_db, mock_redis):

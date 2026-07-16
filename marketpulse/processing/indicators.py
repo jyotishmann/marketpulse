@@ -32,6 +32,7 @@ INDICATOR_COLS = [
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
+
 def _float_or_none(value: object) -> Decimal | None:
     """
     Convert a float/numpy scalar to Decimal for database insertion.
@@ -81,8 +82,8 @@ def _compute_rsi(close: pd.Series, period: int = 14) -> pd.Series:
     delta = close.diff()
 
     # Step 2 & 3: separate gains and losses
-    gain = delta.where(delta > 0, 0.0)   # positive changes only, else 0
-    loss = (-delta).where(delta < 0, 0.0) # absolute value of negative changes
+    gain = delta.where(delta > 0, 0.0)  # positive changes only, else 0
+    loss = (-delta).where(delta < 0, 0.0)  # absolute value of negative changes
 
     # Step 4: Wilder's smoothing — EWM with alpha = 1/period
     # alpha=1/14 ≈ 0.0714 gives more weight to older values vs standard EMA
@@ -102,9 +103,11 @@ def _compute_rsi(close: pd.Series, period: int = 14) -> pd.Series:
 
     return rsi.round(4)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Public API: compute all indicators on an OHLCV DataFrame
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def compute_all(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -142,7 +145,7 @@ def compute_all(df: pd.DataFrame) -> pd.DataFrame:
         logger.warning("compute_all called with empty DataFrame — returning as-is")
         return df.copy()
 
-    result = df.copy()   # never mutate the caller's DataFrame
+    result = df.copy()  # never mutate the caller's DataFrame
     close = result["close"]
 
     ticker = result["ticker"].iloc[0] if "ticker" in result.columns else "?"
@@ -152,7 +155,8 @@ def compute_all(df: pd.DataFrame) -> pd.DataFrame:
     if n_rows < 20:
         logger.warning(
             "%s: only %d rows — most indicators will be NaN (need 200 for SMA-200)",
-            ticker, n_rows,
+            ticker,
+            n_rows,
         )
 
     # ── Simple Moving Averages ─────────────────────────────────────────────────
@@ -199,8 +203,7 @@ def compute_all(df: pd.DataFrame) -> pd.DataFrame:
     # Count how many rows have a non-NaN sma_20 (proxy for "indicator-ready" rows)
     ready_rows = result["sma_20"].notna().sum()
     logger.info(
-        "%s: %d/%d rows have indicators (sma_20 non-null) "
-        "[sma_200 non-null: %d]",
+        "%s: %d/%d rows have indicators (sma_20 non-null) [sma_200 non-null: %d]",
         ticker,
         ready_rows,
         n_rows,
@@ -209,9 +212,11 @@ def compute_all(df: pd.DataFrame) -> pd.DataFrame:
 
     return result
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Public API: persist computed indicators to the database
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def upsert_indicators(df: pd.DataFrame, session: Session) -> int:
     """
@@ -271,8 +276,7 @@ def upsert_indicators(df: pd.DataFrame, session: Session) -> int:
 
     ticker = df_to_write["ticker"].iloc[0]
     logger.info(
-        "upsert_indicators: %d rows submitted for %s "
-        "(sma_200 available for %d rows)",
+        "upsert_indicators: %d rows submitted for %s (sma_200 available for %d rows)",
         len(records),
         ticker,
         df_to_write["sma_200"].notna().sum(),

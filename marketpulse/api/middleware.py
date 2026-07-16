@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 # ── Middleware classes ─────────────────────────────────────────────────────────
 
+
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """
     Assign a unique short ID to every request.
@@ -70,6 +71,7 @@ class TimingMiddleware(BaseHTTPMiddleware):
 
 # ── Setup function ─────────────────────────────────────────────────────────────
 
+
 def setup_middleware(app: FastAPI) -> None:
     """
     Register all middleware on the FastAPI application.
@@ -94,9 +96,9 @@ def setup_middleware(app: FastAPI) -> None:
     # Production: replace with specific origins e.g. ["https://your-dashboard.com"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],        # allows any origin (Streamlit on port 8501)
+        allow_origins=["*"],  # allows any origin (Streamlit on port 8501)
         allow_credentials=True,
-        allow_methods=["GET", "OPTIONS"],   # API is read-only
+        allow_methods=["GET", "OPTIONS"],  # API is read-only
         allow_headers=["*"],
     )
 

@@ -19,6 +19,7 @@ router = APIRouter(prefix="/stocks", tags=["Stocks"])
 
 # ── Helper: convert Decimal/None to float/None for JSON serialisation ─────────
 
+
 def _f(value: object) -> float | None:
     """Convert SQLAlchemy Decimal to float; return None as None."""
     return float(value) if value is not None else None  # type: ignore[arg-type]
@@ -27,6 +28,7 @@ def _f(value: object) -> float | None:
 # ══════════════════════════════════════════════════════════════════════════════
 # GET /api/v1/stocks — list all tracked tickers
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("")
 async def list_tickers() -> dict:
@@ -45,6 +47,7 @@ async def list_tickers() -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 # GET /api/v1/stocks/{ticker}/prices
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/{ticker}/prices")
 async def get_prices(
@@ -80,7 +83,9 @@ async def get_prices(
     rows = (
         db.query(StockPrice)
         .filter(StockPrice.ticker == ticker)
-        .order_by(StockPrice.timestamp.desc())  # newest first (efficient with desc index)
+        .order_by(
+            StockPrice.timestamp.desc()
+        )  # newest first (efficient with desc index)
         .limit(limit)
         .all()
     )
@@ -118,6 +123,7 @@ async def get_prices(
 # ══════════════════════════════════════════════════════════════════════════════
 # GET /api/v1/stocks/{ticker}/indicators
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/{ticker}/indicators")
 async def get_indicators(

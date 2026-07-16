@@ -21,6 +21,7 @@ SIGNAL_REVERSE: dict[str, int] = {"BUY": 1, "HOLD": 0, "SELL": -1}
 
 # Training
 
+
 def train_classifier(
     X: pd.DataFrame,
     y: pd.Series,
@@ -59,33 +60,41 @@ def train_classifier(
 
     logger.info(
         "Training classifier for %s: %d train rows, %d test rows",
-        ticker, len(X_train), len(X_test),
+        ticker,
+        len(X_train),
+        len(X_test),
     )
 
     # Log label distribution in training set
     dist = y_train.value_counts().to_dict()
     logger.debug(
         "Train label distribution: BUY=%d HOLD=%d SELL=%d",
-        dist.get(1, 0), dist.get(0, 0), dist.get(-1, 0),
+        dist.get(1, 0),
+        dist.get(0, 0),
+        dist.get(-1, 0),
     )
 
     # Build and fit the Pipeline
-    pipeline = Pipeline([
-        # Step 1: StandardScaler — normalise all features to mean=0, std=1.
-        # Fitted on train data only; .transform() applied automatically at predict time.
-        ("scaler", StandardScaler()),
-
-        # Step 2: RandomForest — ensemble of 100 decision trees.
-        # max_depth=10 and min_samples_leaf=5 prevent overfitting.
-        ("clf", RandomForestClassifier(
-            n_estimators=100,      # number of trees in the forest
-            max_depth=10,          # max tree depth (prevents memorisation)
-            min_samples_leaf=5,    # each leaf must have ≥5 samples (smoothing)
-            class_weight="balanced",  # handle class imbalance (HOLD often dominates)
-            random_state=42,       # reproducible results
-            n_jobs=-1,             # use all CPU cores
-        )),
-    ])
+    pipeline = Pipeline(
+        [
+            # Step 1: StandardScaler — normalise all features to mean=0, std=1.
+            # Fitted on train data only; .transform() applied automatically at predict time.
+            ("scaler", StandardScaler()),
+            # Step 2: RandomForest — ensemble of 100 decision trees.
+            # max_depth=10 and min_samples_leaf=5 prevent overfitting.
+            (
+                "clf",
+                RandomForestClassifier(
+                    n_estimators=100,  # number of trees in the forest
+                    max_depth=10,  # max tree depth (prevents memorisation)
+                    min_samples_leaf=5,  # each leaf must have ≥5 samples (smoothing)
+                    class_weight="balanced",  # handle class imbalance (HOLD often dominates)
+                    random_state=42,  # reproducible results
+                    n_jobs=-1,  # use all CPU cores
+                ),
+            ),
+        ]
+    )
 
     pipeline.fit(X_train, y_train)
 
@@ -97,13 +106,16 @@ def train_classifier(
     pred_series = pd.Series(y_pred)
     pred_dist = pred_series.value_counts().to_dict()
     logger.info(
-        "Classifier for %s: accuracy=%.4f | test predictions: "
-        "BUY=%d HOLD=%d SELL=%d",
-        ticker, accuracy,
-        pred_dist.get(1, 0), pred_dist.get(0, 0), pred_dist.get(-1, 0),
+        "Classifier for %s: accuracy=%.4f | test predictions: BUY=%d HOLD=%d SELL=%d",
+        ticker,
+        accuracy,
+        pred_dist.get(1, 0),
+        pred_dist.get(0, 0),
+        pred_dist.get(-1, 0),
     )
 
     return pipeline, accuracy
+
 
 # Persistence
 
@@ -150,7 +162,7 @@ def save_classifier(
     # Bundle model with metadata for safe loading
     bundle = {
         "pipeline": pipeline,
-        "feature_cols": FEATURE_COLS,   # which features this model expects
+        "feature_cols": FEATURE_COLS,  # which features this model expects
         "ticker": ticker,
         "trained_at": datetime.now(tz=UTC).isoformat(),
     }
@@ -179,7 +191,8 @@ def save_classifier(
 
     logger.info(
         "Registered classifier for %s in ModelRegistry (accuracy=%.4f)",
-        ticker, accuracy,
+        ticker,
+        accuracy,
     )
     return file_path
 
@@ -202,14 +215,17 @@ def load_classifier(ticker: str) -> Pipeline | None:
     if not file_path.exists():
         logger.info(
             "No classifier file for %s at %s — model not yet trained",
-            ticker, file_path,
+            ticker,
+            file_path,
         )
         return None
 
     try:
         bundle: dict = joblib.load(file_path)
     except Exception:
-        logger.exception("Failed to load classifier bundle for %s from %s", ticker, file_path)
+        logger.exception(
+            "Failed to load classifier bundle for %s from %s", ticker, file_path
+        )
         return None
 
     # Validate feature columns match current FEATURE_COLS
@@ -218,12 +234,15 @@ def load_classifier(ticker: str) -> Pipeline | None:
         logger.error(
             "Classifier for %s was trained on different features! "
             "Saved: %s | Current: %s. Retrain the model.",
-            ticker, saved_cols, FEATURE_COLS,
+            ticker,
+            saved_cols,
+            FEATURE_COLS,
         )
         return None
 
     logger.debug(
         "Loaded classifier for %s (trained_at=%s)",
-        ticker, bundle.get("trained_at", "unknown"),
+        ticker,
+        bundle.get("trained_at", "unknown"),
     )
     return bundle["pipeline"]

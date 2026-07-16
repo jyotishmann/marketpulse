@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 # Schema 1: Raw OHLCV price bar from yfinance
 
+
 class RawOHLCVRow(BaseModel):
     """
     One 15-minute price bar returned by yfinance.download().
@@ -19,12 +20,12 @@ class RawOHLCVRow(BaseModel):
     """
 
     model_config = ConfigDict(
-        extra="ignore",          # silently drop Dividends, Stock Splits, etc.
+        extra="ignore",  # silently drop Dividends, Stock Splits, etc.
         str_strip_whitespace=True,
     )
 
     ticker: str
-    timestamp: datetime          # timezone-aware; yfinance returns tz-aware values
+    timestamp: datetime  # timezone-aware; yfinance returns tz-aware values
     open: float
     high: float
     low: float
@@ -75,17 +76,16 @@ class RawOHLCVRow(BaseModel):
         tol = 0.01  # 1 cent tolerance for float arithmetic noise
 
         if self.high < self.low - tol:
-            raise ValueError(
-                f"high ({self.high}) must be >= low ({self.low})"
-            )
+            raise ValueError(f"high ({self.high}) must be >= low ({self.low})")
         if not (self.low - tol <= self.close <= self.high + tol):
             raise ValueError(
-                f"close ({self.close}) outside range "
-                f"[low={self.low}, high={self.high}]"
+                f"close ({self.close}) outside range [low={self.low}, high={self.high}]"
             )
         return self
 
+
 # Schema 2: Raw news article from an RSS feed entry
+
 
 class RawNewsItem(BaseModel):
     """
@@ -97,13 +97,13 @@ class RawNewsItem(BaseModel):
     """
 
     model_config = ConfigDict(
-        extra="ignore",             # RSS entries carry many extra fields we ignore
+        extra="ignore",  # RSS entries carry many extra fields we ignore
         str_strip_whitespace=True,
     )
 
     title: str
     source_url: str
-    published_at: datetime          # must be timezone-aware
+    published_at: datetime  # must be timezone-aware
 
     # Field-level validators
 

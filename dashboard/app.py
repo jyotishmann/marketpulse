@@ -15,6 +15,7 @@ redundant API calls within each 30-second window.
 Run locally:  streamlit run dashboard/app.py
 In Docker:    docker compose up -d  (starts on port 8501)
 """
+
 from __future__ import annotations
 
 import os
@@ -36,18 +37,19 @@ API_URL: str = os.environ.get(
 )
 
 # ── Colour palette (consistent across all charts) ─────────────────────────────
-_C_BUY = "#26a69a"       # teal-green  — up candles, BUY signal
-_C_SELL = "#ef5350"      # red         — down candles, SELL signal
-_C_HOLD = "#FFA726"      # amber       — HOLD signal
-_C_SMA20 = "#2196F3"     # blue        — SMA-20 line
-_C_SMA50 = "#FF9800"     # orange      — SMA-50 line
-_C_BB = "#9E9E9E"        # grey        — Bollinger Bands
-_C_SENTIMENT = "#2196F3" # blue        — sentiment fill
-_C_POS = "#66BB6A"       # green       — positive sentiment markers
-_C_NEG = "#EF5350"       # red         — negative sentiment markers
-_C_NEU = "#90A4AE"       # blue-grey   — neutral sentiment markers
+_C_BUY = "#26a69a"  # teal-green  — up candles, BUY signal
+_C_SELL = "#ef5350"  # red         — down candles, SELL signal
+_C_HOLD = "#FFA726"  # amber       — HOLD signal
+_C_SMA20 = "#2196F3"  # blue        — SMA-20 line
+_C_SMA50 = "#FF9800"  # orange      — SMA-50 line
+_C_BB = "#9E9E9E"  # grey        — Bollinger Bands
+_C_SENTIMENT = "#2196F3"  # blue        — sentiment fill
+_C_POS = "#66BB6A"  # green       — positive sentiment markers
+_C_NEG = "#EF5350"  # red         — negative sentiment markers
+_C_NEU = "#90A4AE"  # blue-grey   — neutral sentiment markers
 
 # ── Market status utility ─────────────────────────────────────────────────────
+
 
 def is_market_open() -> bool:
     """
@@ -61,7 +63,7 @@ def is_market_open() -> bool:
     For production accuracy, use a proper market calendar library.
     """
     now = datetime.now(tz=UTC)
-    if now.weekday() > 4:               # 5=Saturday, 6=Sunday
+    if now.weekday() > 4:  # 5=Saturday, 6=Sunday
         return False
     open_utc = dt_time(14, 30)
     close_utc = dt_time(21, 0)
@@ -78,10 +80,12 @@ def _f(v: object) -> float | None:
     except (TypeError, ValueError):
         return None
 
+
 # ── API fetch functions ────────────────────────────────────────────────────────
 # All decorated with @st.cache_data to prevent redundant API calls on re-renders.
 # Return empty DataFrames / None / [] on error (fail-silent for graceful UI).
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 @st.cache_data(ttl=10)
 def _fetch_health() -> dict:
@@ -220,7 +224,9 @@ def _fetch_news(limit: int = 30) -> pd.DataFrame:
         pass
     return pd.DataFrame()
 
+
 # ── Chart builder functions ────────────────────────────────────────────────────
+
 
 def _build_price_chart(
     ticker: str,
@@ -249,64 +255,86 @@ def _build_price_chart(
 
     # ── Trace 1: Candlestick ───────────────────────────────────────────────────
     if not prices_df.empty:
-        fig.add_trace(go.Candlestick(
-            x=prices_df["timestamp"],
-            open=prices_df["open"],
-            high=prices_df["high"],
-            low=prices_df["low"],
-            close=prices_df["close"],
-            name=ticker,
-            increasing_line_color=_C_BUY,   # green candles
-            decreasing_line_color=_C_SELL,  # red candles
-        ))
+        fig.add_trace(
+            go.Candlestick(
+                x=prices_df["timestamp"],
+                open=prices_df["open"],
+                high=prices_df["high"],
+                low=prices_df["low"],
+                close=prices_df["close"],
+                name=ticker,
+                increasing_line_color=_C_BUY,  # green candles
+                decreasing_line_color=_C_SELL,  # red candles
+            )
+        )
 
     # ── Traces 2–5: Indicator overlays ────────────────────────────────────────
     if not indicators_df.empty:
         ind = indicators_df
 
         if "sma_20" in ind.columns and ind["sma_20"].notna().any():
-            fig.add_trace(go.Scatter(
-                x=ind["timestamp"], y=ind["sma_20"],
-                mode="lines", name="SMA-20",
-                line={"color": _C_SMA20, "width": 1.2},
-                opacity=0.9,
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=ind["timestamp"],
+                    y=ind["sma_20"],
+                    mode="lines",
+                    name="SMA-20",
+                    line={"color": _C_SMA20, "width": 1.2},
+                    opacity=0.9,
+                )
+            )
 
         if "sma_50" in ind.columns and ind["sma_50"].notna().any():
-            fig.add_trace(go.Scatter(
-                x=ind["timestamp"], y=ind["sma_50"],
-                mode="lines", name="SMA-50",
-                line={"color": _C_SMA50, "width": 1.2},
-                opacity=0.9,
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=ind["timestamp"],
+                    y=ind["sma_50"],
+                    mode="lines",
+                    name="SMA-50",
+                    line={"color": _C_SMA50, "width": 1.2},
+                    opacity=0.9,
+                )
+            )
 
         # Bollinger Bands — add upper THEN lower with fill="tonexty"
         has_bb = (
-            "bb_upper" in ind.columns and ind["bb_upper"].notna().any()
-            and "bb_lower" in ind.columns and ind["bb_lower"].notna().any()
+            "bb_upper" in ind.columns
+            and ind["bb_upper"].notna().any()
+            and "bb_lower" in ind.columns
+            and ind["bb_lower"].notna().any()
         )
         if has_bb:
-            fig.add_trace(go.Scatter(
-                x=ind["timestamp"], y=ind["bb_upper"],
-                mode="lines", name="BB Upper",
-                line={"color": _C_BB, "width": 0.8, "dash": "dash"},
-                opacity=0.6,
-            ))
-            fig.add_trace(go.Scatter(
-                x=ind["timestamp"], y=ind["bb_lower"],
-                mode="lines", name="BB Lower",
-                line={"color": _C_BB, "width": 0.8, "dash": "dash"},
-                # fill="tonexty" fills from BB Lower UP to the previous trace (BB Upper)
-                fill="tonexty",
-                fillcolor="rgba(158,158,158,0.07)",  # nearly-invisible grey band
-                opacity=0.6,
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=ind["timestamp"],
+                    y=ind["bb_upper"],
+                    mode="lines",
+                    name="BB Upper",
+                    line={"color": _C_BB, "width": 0.8, "dash": "dash"},
+                    opacity=0.6,
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=ind["timestamp"],
+                    y=ind["bb_lower"],
+                    mode="lines",
+                    name="BB Lower",
+                    line={"color": _C_BB, "width": 0.8, "dash": "dash"},
+                    # fill="tonexty" fills from BB Lower UP to the previous trace (BB Upper)
+                    fill="tonexty",
+                    fillcolor="rgba(158,158,158,0.07)",  # nearly-invisible grey band
+                    opacity=0.6,
+                )
+            )
 
     # ── Layout ─────────────────────────────────────────────────────────────────
     fig.update_layout(
         title={"text": f"{ticker} — Price & Indicators", "font": {"size": 13}},
         xaxis={
-            "rangeslider": {"visible": False},  # disable mini-chart below (wastes space)
+            "rangeslider": {
+                "visible": False
+            },  # disable mini-chart below (wastes space)
             "type": "date",
         },
         yaxis={"title": "Price (USD)", "side": "right"},
@@ -314,8 +342,10 @@ def _build_price_chart(
         margin={"l": 0, "r": 50, "t": 40, "b": 0},
         legend={
             "orientation": "h",
-            "yanchor": "bottom", "y": 1.01,
-            "xanchor": "right", "x": 1,
+            "yanchor": "bottom",
+            "y": 1.01,
+            "xanchor": "right",
+            "x": 1,
             "font": {"size": 11},
         },
         hovermode="x unified",  # show all trace values in one tooltip on hover
@@ -348,20 +378,21 @@ def _build_sentiment_chart(news_df: pd.DataFrame) -> go.Figure:
             lambda v: _C_POS if v > 0.05 else _C_NEG if v < -0.05 else _C_NEU
         ).tolist()
 
-        fig.add_trace(go.Scatter(
-            x=df["published_at"],
-            y=compound,
-            mode="lines+markers",
-            name="Compound",
-            line={"color": _C_SENTIMENT, "width": 1.5},
-            marker={"size": 5, "color": marker_colours},
-            fill="tozeroy",
-            fillcolor="rgba(33, 150, 243, 0.07)",
-            hovertemplate=(
-                "<b>%{x|%b %d %H:%M}</b><br>"
-                "Compound: %{y:.4f}<extra></extra>"
-            ),
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=df["published_at"],
+                y=compound,
+                mode="lines+markers",
+                name="Compound",
+                line={"color": _C_SENTIMENT, "width": 1.5},
+                marker={"size": 5, "color": marker_colours},
+                fill="tozeroy",
+                fillcolor="rgba(33, 150, 243, 0.07)",
+                hovertemplate=(
+                    "<b>%{x|%b %d %H:%M}</b><br>Compound: %{y:.4f}<extra></extra>"
+                ),
+            )
+        )
 
         # Threshold reference lines
         fig.add_hline(y=0.05, line_dash="dot", line_color=_C_POS, opacity=0.5)
@@ -379,7 +410,9 @@ def _build_sentiment_chart(news_df: pd.DataFrame) -> go.Figure:
     )
     return fig
 
+
 # ── Panel render functions ─────────────────────────────────────────────────────
+
 
 def _render_sidebar() -> str:
     """
@@ -424,9 +457,7 @@ def _render_sidebar() -> str:
         else:
             st.caption("🔴 Market Closed")
 
-        st.caption(
-            f"UTC: {datetime.now(tz=UTC).strftime('%H:%M:%S')}"
-        )
+        st.caption(f"UTC: {datetime.now(tz=UTC).strftime('%H:%M:%S')}")
 
         st.divider()
 
@@ -571,6 +602,7 @@ def _render_metrics_row(
         vol_str = f"{vol / 1_000_000:.2f}M" if vol else "—"
         st.metric("Volume", vol_str, delta=vol_delta)
 
+
 def _render_sentiment_news_panel(news_df: pd.DataFrame) -> None:
     """
     Render the sentiment timeline chart (left) and news headlines feed (right).
@@ -609,8 +641,7 @@ def _render_sentiment_news_panel(news_df: pd.DataFrame) -> None:
 
                 st.markdown(f"{icon} [{display_title}]({row['source_url']})")
                 st.caption(
-                    f"Sentiment: {compound:+.3f} | "
-                    f"{pub.strftime('%b %d, %H:%M')} UTC"
+                    f"Sentiment: {compound:+.3f} | {pub.strftime('%b %d, %H:%M')} UTC"
                 )
 
             # Remaining headlines inside a collapsible expander
@@ -619,7 +650,13 @@ def _render_sentiment_news_panel(news_df: pd.DataFrame) -> None:
                 with st.expander(f"See {len(remaining)} more headlines"):
                     for _, row in remaining.iterrows():
                         compound = float(row["sentiment_compound"])
-                        icon = "🟢" if compound > 0.05 else "🔴" if compound < -0.05 else "⚪"
+                        icon = (
+                            "🟢"
+                            if compound > 0.05
+                            else "🔴"
+                            if compound < -0.05
+                            else "⚪"
+                        )
                         title = str(row["title"])[:72]
                         st.markdown(f"{icon} {title}")
         else:
@@ -673,6 +710,7 @@ def _render_anomaly_panel(ticker: str, signals_df: pd.DataFrame) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 # Main dashboard orchestrator
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def main() -> None:
     """
@@ -780,4 +818,3 @@ if __name__ == "__main__":
     main()
 
 main()
-

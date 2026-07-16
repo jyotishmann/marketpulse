@@ -27,8 +27,8 @@ engine = create_engine(
 # and sends them to the database as one atomic transaction on commit().
 SessionLocal = sessionmaker(
     bind=engine,
-    autocommit=False,   # we commit manually — explicit is safer
-    autoflush=False,    # we flush manually — avoids surprise SQL mid-transaction
+    autocommit=False,  # we commit manually — explicit is safer
+    autoflush=False,  # we flush manually — avoids surprise SQL mid-transaction
 )
 
 
@@ -50,9 +50,9 @@ def get_db() -> Generator[Session, None, None]:
     """
     db = SessionLocal()
     try:
-        yield db          # FastAPI injects this session into the route function
+        yield db  # FastAPI injects this session into the route function
     finally:
-        db.close()        # always runs, even if the route raised an exception
+        db.close()  # always runs, even if the route raised an exception
 
 
 def verify_connection() -> bool:

@@ -14,6 +14,7 @@ import redis as redis_lib
 # RedisClient tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestRedisClient:
     """Tests for the RedisClient wrapper class."""
 
@@ -118,7 +119,9 @@ class TestRedisClient:
         client.set_json("test:key", {"signal": "BUY"}, ttl=60)
 
         call_args = mock_r.setex.call_args
-        stored_value = call_args[1]["value"] if "value" in call_args[1] else call_args[0][2]
+        stored_value = (
+            call_args[1]["value"] if "value" in call_args[1] else call_args[0][2]
+        )
         parsed = json.loads(stored_value)
         assert parsed == {"signal": "BUY"}
 
@@ -141,6 +144,7 @@ class TestRedisClient:
 # ══════════════════════════════════════════════════════════════════════════════
 # cached() decorator tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestCachedDecorator:
     """Tests for the cache-aside @cached() decorator."""
@@ -192,13 +196,14 @@ class TestCachedDecorator:
 
             result = expensive_func(21)
 
-        assert call_count == 0      # function was NOT called
-        assert result == [42, 84]   # returned cached data
+        assert call_count == 0  # function was NOT called
+        assert result == [42, 84]  # returned cached data
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # invalidate_ticker() tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestInvalidateTicker:
     """Tests for the Redis cache invalidation helper."""

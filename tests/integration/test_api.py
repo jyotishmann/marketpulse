@@ -15,6 +15,7 @@ import pytest  # noqa: F401
 # Health endpoint tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestHealthEndpoint:
     """Tests for GET /api/v1/health."""
 
@@ -39,7 +40,7 @@ class TestHealthEndpoint:
         )
         response = api_client.get("/api/v1/health")
 
-        assert response.status_code == 200   # still 200 — API is up
+        assert response.status_code == 200  # still 200 — API is up
         body = response.json()
         assert body["status"] == "degraded"
         assert body["db"] == "error"
@@ -56,6 +57,7 @@ class TestHealthEndpoint:
 # ══════════════════════════════════════════════════════════════════════════════
 # Stocks endpoint tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestStocksEndpoints:
     """Tests for GET /api/v1/stocks and /api/v1/stocks/{ticker}/prices."""
@@ -88,11 +90,7 @@ class TestStocksEndpoints:
         mock_row.volume = 1_234_567
 
         (
-            mock_db.query.return_value
-            .filter.return_value
-            .order_by.return_value
-            .limit.return_value
-            .all.return_value
+            mock_db.query.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value
         ) = [mock_row, mock_row]
 
         response = api_client.get("/api/v1/stocks/AAPL/prices?limit=2")
@@ -113,18 +111,22 @@ class TestStocksEndpoints:
         mock_row.volume = 500_000
 
         (
-            mock_db.query.return_value
-            .filter.return_value
-            .order_by.return_value
-            .limit.return_value
-            .all.return_value
+            mock_db.query.return_value.filter.return_value.order_by.return_value.limit.return_value.all.return_value
         ) = [mock_row]
 
         data = api_client.get("/api/v1/stocks/AAPL/prices").json()
         assert isinstance(data, list)
         if data:  # might be empty due to mock configuration
             row = data[0]
-            for key in ("ticker", "timestamp", "open", "high", "low", "close", "volume"):
+            for key in (
+                "ticker",
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+            ):
                 assert key in row, f"Missing key '{key}' in price response"
 
     def test_indicators_returns_404_when_no_data(self, api_client):
@@ -146,6 +148,7 @@ class TestStocksEndpoints:
 # Signals endpoint tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestSignalsEndpoints:
     """Tests for GET /api/v1/stocks/{ticker}/signals endpoints."""
 
@@ -163,10 +166,7 @@ class TestSignalsEndpoints:
         mock_signal.model_version = "v1"
 
         (
-            mock_db.query.return_value
-            .filter.return_value
-            .order_by.return_value
-            .first.return_value
+            mock_db.query.return_value.filter.return_value.order_by.return_value.first.return_value
         ) = mock_signal
 
         response = api_client.get("/api/v1/stocks/AAPL/signals/latest")
@@ -186,6 +186,7 @@ class TestSignalsEndpoints:
 # ══════════════════════════════════════════════════════════════════════════════
 # News endpoint tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestNewsEndpoints:
     """Tests for GET /api/v1/news."""
@@ -209,10 +210,7 @@ class TestNewsEndpoints:
         mock_article.sentiment_compound = Decimal("0.7096")
 
         (
-            mock_db.query.return_value
-            .order_by.return_value
-            .limit.return_value
-            .all.return_value
+            mock_db.query.return_value.order_by.return_value.limit.return_value.all.return_value
         ) = [mock_article]
 
         response = api_client.get("/api/v1/news?limit=5")
@@ -228,6 +226,7 @@ class TestNewsEndpoints:
 # ══════════════════════════════════════════════════════════════════════════════
 # Middleware tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestMiddleware:
     """Tests that middleware headers are added to responses."""
@@ -247,38 +246,48 @@ class TestMiddleware:
         r2 = api_client.get("/api/v1/stocks")
         assert r1.headers["x-request-id"] != r2.headers["x-request-id"]
 
+
 def test_create_app_returns_fastapi_instance():
     from unittest.mock import patch
 
     from fastapi import FastAPI
+
     # Patch scheduler to prevent startup side effects
     with patch("marketpulse.api.main.create_scheduler") as mock_sched:
         mock_sched.return_value = MagicMock()
         from marketpulse.api.main import create_app
+
         app = create_app()
     assert isinstance(app, FastAPI)
     assert app.title == "MarketPulse API"
 
+
 def test_app_has_correct_version():
     from unittest.mock import patch
+
     with patch("marketpulse.api.main.create_scheduler"):
         from marketpulse.api.main import create_app
+
         app = create_app()
     assert app.version == "0.1.0"
+
 
 def test_get_redis_dependency_returns_client():
     from unittest.mock import patch
 
     from marketpulse.api.dependencies import get_redis
+
     with patch("marketpulse.api.dependencies.get_redis_client") as mock_fn:
         mock_fn.return_value = MagicMock()
         result = get_redis()
     assert result is not None
 
+
 def test_get_ml_service_dependency_returns_service():
     from unittest.mock import patch
 
     from marketpulse.api.dependencies import get_ml_service
+
     with patch("marketpulse.api.dependencies.get_prediction_service") as mock_fn:
         mock_fn.return_value = MagicMock()
         result = get_ml_service()

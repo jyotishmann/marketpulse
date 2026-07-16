@@ -21,6 +21,7 @@ from marketpulse.processing.indicators import (
 # ETL function tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestRowsToOhlcvDf:
     """Tests for rows_to_ohlcv_df() conversion and cleaning."""
 
@@ -28,7 +29,15 @@ class TestRowsToOhlcvDf:
         df = rows_to_ohlcv_df(raw_ohlcv_rows)
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 2
-        assert set(df.columns) >= {"ticker", "timestamp", "open", "high", "low", "close", "volume"}
+        assert set(df.columns) >= {
+            "ticker",
+            "timestamp",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        }
 
     def test_empty_input_returns_empty_df(self):
         df = rows_to_ohlcv_df([])
@@ -55,6 +64,7 @@ class TestRowsToOhlcvDf:
 # ══════════════════════════════════════════════════════════════════════════════
 # Sentiment scoring tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestScoreSentiment:
     """Tests for VADER sentiment scoring."""
@@ -84,6 +94,7 @@ class TestScoreSentiment:
 # ══════════════════════════════════════════════════════════════════════════════
 # Technical indicator tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestComputeAll:
     """Tests for the full indicator computation pipeline."""
@@ -165,10 +176,12 @@ class TestComputeRSI:
         rsi = _compute_rsi(close, period=14)
         assert rsi.dropna().iloc[-1] < 10
 
+
 def test_upsert_prices_calls_session_execute(raw_ohlcv_rows, mock_db):
     from unittest.mock import MagicMock, patch
 
     from marketpulse.processing.etl import upsert_prices
+
     with patch("marketpulse.processing.etl.pg_insert") as mock_insert:
         mock_insert.return_value.on_conflict_do_nothing.return_value = MagicMock()
         result = upsert_prices(raw_ohlcv_rows, mock_db)
@@ -176,21 +189,28 @@ def test_upsert_prices_calls_session_execute(raw_ohlcv_rows, mock_db):
     mock_db.execute.assert_called_once()
     mock_db.commit.assert_called_once()
 
+
 def test_upsert_prices_empty_returns_zero(mock_db):
     from marketpulse.processing.etl import upsert_prices
+
     result = upsert_prices([], mock_db)
     assert result == 0
     mock_db.execute.assert_not_called()
 
+
 def test_upsert_news_empty_returns_zero(mock_db):
     from marketpulse.processing.etl import upsert_news
+
     result = upsert_news([], mock_db)
     assert result == 0
 
+
 def test_load_recent_prices_empty_db_returns_empty(mock_db):
     from marketpulse.processing.etl import load_recent_prices
+
     df = load_recent_prices("AAPL", mock_db, lookback=10)
     assert df.empty
+
 
 def test_upsert_news_calls_vader(mock_db):
     from datetime import datetime, timezone  # noqa: F401, F811
@@ -199,27 +219,33 @@ def test_upsert_news_calls_vader(mock_db):
     from marketpulse.ingestion.schemas import RawNewsItem
     from marketpulse.processing.etl import upsert_news
 
-    items = [RawNewsItem(
-        title="Apple stock surges to record high",
-        source_url="https://news.com/article/1",
-        published_at=datetime.now(tz=UTC),
-    )]
+    items = [
+        RawNewsItem(
+            title="Apple stock surges to record high",
+            source_url="https://news.com/article/1",
+            published_at=datetime.now(tz=UTC),
+        )
+    ]
     with patch("marketpulse.processing.etl.pg_insert") as mock_insert:
         mock_insert.return_value.on_conflict_do_nothing.return_value = MagicMock()
         result = upsert_news(items, mock_db)
     assert result == 1
 
+
 def test_upsert_indicators_empty_df_returns_zero(mock_db):
     import pandas as pd
 
     from marketpulse.processing.indicators import upsert_indicators
+
     result = upsert_indicators(pd.DataFrame(), mock_db)
     assert result == 0
+
 
 def test_upsert_indicators_skips_rows_without_sma20(mock_db, large_ohlcv_df):
     from unittest.mock import MagicMock, patch
 
     from marketpulse.processing.indicators import compute_all, upsert_indicators
+
     enriched = compute_all(large_ohlcv_df)
     with patch("marketpulse.processing.indicators.pg_insert") as mock_insert:
         mock_insert.return_value.on_conflict_do_nothing.return_value = MagicMock()

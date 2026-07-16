@@ -25,10 +25,11 @@ class PredictionResult(TypedDict):
     All downstream consumers (scheduler, API router, dashboard) depend
     on exactly these keys being present with these types.
     """
+
     ticker: str
-    signal: str       # "BUY", "HOLD", or "SELL"
+    signal: str  # "BUY", "HOLD", or "SELL"
     confidence: float  # probability of the winning class (0.0–1.0)
-    is_anomaly: bool   # True if IsolationForest flagged this bar
+    is_anomaly: bool  # True if IsolationForest flagged this bar
     model_version: str  # human-readable version string from ModelRegistry
 
 
@@ -49,8 +50,9 @@ class PredictionService:
     def __init__(self) -> None:
         # In-memory model caches — loaded lazily on first .predict() call
         from typing import Any
-        self._classifiers: dict[str, Any] = {}          # ticker → fitted Pipeline
-        self._anomaly_detectors: dict[str, Any] = {}    # ticker → fitted IsolationForest
+
+        self._classifiers: dict[str, Any] = {}  # ticker → fitted Pipeline
+        self._anomaly_detectors: dict[str, Any] = {}  # ticker → fitted IsolationForest
 
     def predict(
         self,
@@ -125,16 +127,19 @@ class PredictionService:
             "signal": signal,
             "confidence": confidence,
             "is_anomaly": is_anomaly,
-            "model_version": "v1",   # FILE_06 will read this from ModelRegistry
+            "model_version": "v1",  # FILE_06 will read this from ModelRegistry
         }
 
         logger.info(
             "Prediction for %s: %s (conf=%.2f) anomaly=%s",
-            ticker, signal, confidence, is_anomaly,
+            ticker,
+            signal,
+            confidence,
+            is_anomaly,
         )
         return result
 
-# ── Signal persistence and cache management ────────────────────────────────────
+    # ── Signal persistence and cache management ────────────────────────────────────
 
     def save_signal(
         self,
@@ -173,7 +178,9 @@ class PredictionService:
             session.commit()
             logger.debug(
                 "Saved signal for %s: %s (conf=%.2f)",
-                result["ticker"], result["signal"], result["confidence"],
+                result["ticker"],
+                result["signal"],
+                result["confidence"],
             )
         except Exception:
             session.rollback()
@@ -207,5 +214,6 @@ class PredictionService:
             self._anomaly_detectors.clear()
             logger.info(
                 "All model caches cleared (%d classifiers, %d anomaly detectors)",
-                n_clf, n_iso,
+                n_clf,
+                n_iso,
             )

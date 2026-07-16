@@ -18,21 +18,22 @@ logger = logging.getLogger(__name__)
 
 # Canonical feature list — single source of truth used by train and predict
 FEATURE_COLS: list[str] = [
-    "rsi_14",           # RSI-14 momentum oscillator (range: 0–100)
-    "macd",             # MACD line (EMA-12 minus EMA-26)
-    "macd_signal",      # MACD signal line (9-bar EMA of MACD)
-    "close_to_sma20",   # (close / sma_20) - 1: price vs short-term average
-    "close_to_sma50",   # (close / sma_50) - 1: price vs medium-term average
-    "ema_cross",        # (ema_12 / ema_26) - 1: EMA crossover ratio
-    "bb_position",      # (close - bb_lower) / (bb_upper - bb_lower): 0=lower, 1=upper
-    "volume_change",    # volume / rolling_20_mean(volume) - 1: relative volume
+    "rsi_14",  # RSI-14 momentum oscillator (range: 0–100)
+    "macd",  # MACD line (EMA-12 minus EMA-26)
+    "macd_signal",  # MACD signal line (9-bar EMA of MACD)
+    "close_to_sma20",  # (close / sma_20) - 1: price vs short-term average
+    "close_to_sma50",  # (close / sma_50) - 1: price vs medium-term average
+    "ema_cross",  # (ema_12 / ema_26) - 1: EMA crossover ratio
+    "bb_position",  # (close - bb_lower) / (bb_upper - bb_lower): 0=lower, 1=upper
+    "volume_change",  # volume / rolling_20_mean(volume) - 1: relative volume
 ]
 
-LOOKAHEAD: int = 3       # bars ahead for label (3 × 15min = 45min horizon)
+LOOKAHEAD: int = 3  # bars ahead for label (3 × 15min = 45min horizon)
 THRESHOLD: float = 0.005  # 0.5% minimum move to classify as BUY or SELL
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
+
 
 def _make_labels(
     close: pd.Series,
@@ -66,7 +67,7 @@ def _make_labels(
     labels = pd.Series(float("nan"), index=close.index, dtype=float)
 
     mask = future_return.notna()  # last `lookahead` rows have NaN future_return
-    labels[mask & (future_return > threshold)] = 1.0   # BUY
+    labels[mask & (future_return > threshold)] = 1.0  # BUY
     labels[mask & (future_return < -threshold)] = -1.0  # SELL
     # HOLD: return is defined but within threshold band
     is_hold = mask & ~(future_return > threshold) & ~(future_return < -threshold)
@@ -77,12 +78,16 @@ def _make_labels(
     hold_count = (labels == 0.0).sum()
     logger.debug(
         "Label distribution: BUY=%d HOLD=%d SELL=%d (threshold=%.3f)",
-        buy_count, hold_count, sell_count, threshold,
+        buy_count,
+        hold_count,
+        sell_count,
+        threshold,
     )
     return labels
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def build_feature_matrix(
     ticker: str,
@@ -128,47 +133,51 @@ def build_feature_matrix(
     # ── Query indicators ──────────────────────────────────────────────────────
     indicator_rows = (
         session.query(TechnicalIndicator)
-        .filter(TechnicalIndicator.ticker == ticker, TechnicalIndicator.timestamp >= cutoff)
+        .filter(
+            TechnicalIndicator.ticker == ticker, TechnicalIndicator.timestamp >= cutoff
+        )
         .order_by(TechnicalIndicator.timestamp.asc())
         .all()
     )
 
     if not indicator_rows:
-        logger.warning(
-            "No indicator rows for %s — run the ingestion job first", ticker
-        )
+        logger.warning("No indicator rows for %s — run the ingestion job first", ticker)
         return pd.DataFrame(), pd.Series(dtype=int), FEATURE_COLS
 
     # ── Build price DataFrame ─────────────────────────────────────────────────
-    price_df = pd.DataFrame([
-        {
-            "timestamp": r.timestamp,
-            "close": float(r.close),
-            "volume": int(r.volume),
-        }
-        for r in price_rows
-    ])
+    price_df = pd.DataFrame(
+        [
+            {
+                "timestamp": r.timestamp,
+                "close": float(r.close),
+                "volume": int(r.volume),
+            }
+            for r in price_rows
+        ]
+    )
 
     # ── Build indicator DataFrame ─────────────────────────────────────────────
     def _to_float(v: object) -> float | None:
         """Convert Decimal/None to float, preserving None."""
         return float(v) if v is not None else None  # type: ignore[arg-type]
 
-    ind_df = pd.DataFrame([
-        {
-            "timestamp": r.timestamp,
-            "sma_20": _to_float(r.sma_20),
-            "sma_50": _to_float(r.sma_50),
-            "ema_12": _to_float(r.ema_12),
-            "ema_26": _to_float(r.ema_26),
-            "rsi_14": _to_float(r.rsi_14),
-            "macd": _to_float(r.macd),
-            "macd_signal": _to_float(r.macd_signal),
-            "bb_upper": _to_float(r.bb_upper),
-            "bb_lower": _to_float(r.bb_lower),
-        }
-        for r in indicator_rows
-    ])
+    ind_df = pd.DataFrame(
+        [
+            {
+                "timestamp": r.timestamp,
+                "sma_20": _to_float(r.sma_20),
+                "sma_50": _to_float(r.sma_50),
+                "ema_12": _to_float(r.ema_12),
+                "ema_26": _to_float(r.ema_26),
+                "rsi_14": _to_float(r.rsi_14),
+                "macd": _to_float(r.macd),
+                "macd_signal": _to_float(r.macd_signal),
+                "bb_upper": _to_float(r.bb_upper),
+                "bb_lower": _to_float(r.bb_lower),
+            }
+            for r in indicator_rows
+        ]
+    )
 
     # ── Merge prices and indicators on timestamp ───────────────────────────────
     df = pd.merge(price_df, ind_df, on="timestamp", how="inner")
@@ -177,7 +186,10 @@ def build_feature_matrix(
 
     logger.info(
         "build_feature_matrix: %s — %d rows after merge (prices=%d, indicators=%d)",
-        ticker, len(df), len(price_rows), len(indicator_rows),
+        ticker,
+        len(df),
+        len(price_rows),
+        len(indicator_rows),
     )
 
     # ── Engineer ratio features (scale-invariant) ─────────────────────────────
@@ -209,13 +221,15 @@ def build_feature_matrix(
     df = df.dropna(subset=FEATURE_COLS + ["y"])
     logger.info(
         "Dropped %d rows with NaN features/labels, %d rows remain",
-        before_drop - len(df), len(df),
+        before_drop - len(df),
+        len(df),
     )
 
     if len(df) < 50:
         logger.warning(
             "%s: only %d usable rows after cleaning (minimum 50 required)",
-            ticker, len(df),
+            ticker,
+            len(df),
         )
         return pd.DataFrame(), pd.Series(dtype=int), FEATURE_COLS
 

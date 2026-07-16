@@ -17,6 +17,7 @@ from marketpulse.scheduler.jobs import get_prediction_service
 
 # ── Database session ──────────────────────────────────────────────────────────
 
+
 def get_db() -> Generator[Session, None, None]:
     """
     Provide a database session for the duration of one HTTP request.
@@ -32,6 +33,7 @@ def get_db() -> Generator[Session, None, None]:
 
 # ── Redis client ──────────────────────────────────────────────────────────────
 
+
 def get_redis() -> RedisClient:
     """
     Provide the shared RedisClient singleton.
@@ -43,6 +45,7 @@ def get_redis() -> RedisClient:
 
 
 # ── ML prediction service ─────────────────────────────────────────────────────
+
 
 def get_ml_service() -> PredictionService:
     """

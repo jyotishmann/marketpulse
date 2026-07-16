@@ -98,8 +98,8 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=_lifespan,
         # Interactive docs auto-generated from route type annotations
-        docs_url="/docs",       # Swagger UI — try every endpoint in the browser
-        redoc_url="/redoc",     # ReDoc — cleaner read-only documentation
+        docs_url="/docs",  # Swagger UI — try every endpoint in the browser
+        redoc_url="/redoc",  # ReDoc — cleaner read-only documentation
         openapi_url="/openapi.json",
     )
 

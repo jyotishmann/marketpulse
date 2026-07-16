@@ -70,7 +70,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            compare_type=True,   # detect column type changes in autogenerate
+            compare_type=True,  # detect column type changes in autogenerate
         )
         with context.begin_transaction():
             context.run_migrations()
