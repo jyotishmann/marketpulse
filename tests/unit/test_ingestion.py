@@ -21,6 +21,7 @@ from marketpulse.ingestion.schemas import RawNewsItem, RawOHLCVRow
 # RawOHLCVRow schema tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestRawOHLCVRow:
     """Tests for the OHLCV price bar pydantic schema."""
 
@@ -67,11 +68,13 @@ class TestRawOHLCVRow:
     def test_high_less_than_low_raises(self):
         """Candlestick constraint: high must be >= low."""
         with pytest.raises(ValidationError) as exc_info:
-            RawOHLCVRow(**{
-                **self.BASE_VALID,
-                "high": 180.00,  # lower than low=181.90
-                "low": 181.90,
-            })
+            RawOHLCVRow(
+                **{
+                    **self.BASE_VALID,
+                    "high": 180.00,  # lower than low=181.90
+                    "low": 181.90,
+                }
+            )
         # Should be a model validator error
         assert exc_info.value.errors()
 
@@ -92,6 +95,7 @@ class TestRawOHLCVRow:
 # ══════════════════════════════════════════════════════════════════════════════
 # RawNewsItem schema tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestRawNewsItem:
     """Tests for the news article pydantic schema."""
@@ -127,7 +131,9 @@ class TestRawNewsItem:
 
     def test_http_url_accepted(self):
         """http:// (not just https://) should be accepted."""
-        item = RawNewsItem(**{**self.BASE_VALID, "source_url": "http://example.com/news"})
+        item = RawNewsItem(
+            **{**self.BASE_VALID, "source_url": "http://example.com/news"}
+        )
         assert item.source_url.startswith("http://")
 
 
@@ -135,22 +141,26 @@ class TestRawNewsItem:
 # fetch_ohlcv() connector tests (mocked yfinance)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestFetchOHLCV:
     """Tests for the yfinance OHLCV connector with mocked network calls."""
 
     def _make_yfinance_df(self, n: int = 5) -> pd.DataFrame:
         """Synthetic DataFrame that mimics yfinance.download() output."""
         import numpy as np  # noqa: F401
+
         base = datetime(2024, 1, 15, 14, 0, tzinfo=UTC)
         closes = [183.0 + i * 0.1 for i in range(n)]
-        return pd.DataFrame({
-            "Datetime": [base + pd.Timedelta(minutes=15 * i) for i in range(n)],
-            "Open": [c - 0.1 for c in closes],
-            "High": [c + 0.2 for c in closes],
-            "Low": [c - 0.2 for c in closes],
-            "Close": closes,
-            "Volume": [1_000_000] * n,
-        })
+        return pd.DataFrame(
+            {
+                "Datetime": [base + pd.Timedelta(minutes=15 * i) for i in range(n)],
+                "Open": [c - 0.1 for c in closes],
+                "High": [c + 0.2 for c in closes],
+                "Low": [c - 0.2 for c in closes],
+                "Close": closes,
+                "Volume": [1_000_000] * n,
+            }
+        )
 
     def test_returns_validated_rows(self):
         """fetch_ohlcv should return a list of RawOHLCVRow objects."""
@@ -200,10 +210,13 @@ class TestFetchOHLCV:
 # fetch_all_feeds() deduplication tests (mocked feedparser)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestFetchAllFeeds:
     """Tests for the RSS news connector with mocked feedparser."""
 
-    def _make_feed(self, n_entries: int = 2, url_prefix: str = "https://news.com") -> MagicMock:
+    def _make_feed(
+        self, n_entries: int = 2, url_prefix: str = "https://news.com"
+    ) -> MagicMock:
         """Create a mock feedparser feed with n entries."""
         feed = MagicMock()
         feed.bozo = False
@@ -242,7 +255,7 @@ class TestFetchAllFeeds:
                 entry.link = f"https://news.com/article/{i}"
                 entry.get = lambda k, d="", i=i: {
                     "title": f"Headline {i}",
-                    "link": f"https://news.com/article/{i}"
+                    "link": f"https://news.com/article/{i}",
                 }.get(k, d)
                 entry.published_parsed = None
                 entry.published = None
@@ -260,8 +273,8 @@ class TestFetchAllFeeds:
 
         from marketpulse.ingestion.news import fetch_all_feeds
 
-        older_time = _time.gmtime(0)    # epoch — Jan 1 1970
-        newer_time = _time.gmtime()     # now
+        older_time = _time.gmtime(0)  # epoch — Jan 1 1970
+        newer_time = _time.gmtime()  # now
 
         feed = MagicMock()
         feed.bozo = False
@@ -271,7 +284,7 @@ class TestFetchAllFeeds:
         old_entry.get = lambda k, d="": {
             "title": "Old article here",
             "link": "https://news.com/old",
-            "published_parsed": older_time,   # ← ADD THIS
+            "published_parsed": older_time,  # ← ADD THIS
         }.get(k, d)
 
         new_entry = MagicMock()
@@ -279,7 +292,7 @@ class TestFetchAllFeeds:
         new_entry.get = lambda k, d="": {
             "title": "New article here",
             "link": "https://news.com/new",
-            "published_parsed": newer_time,   # ← ADD THIS
+            "published_parsed": newer_time,  # ← ADD THIS
         }.get(k, d)
 
         feed.entries = [old_entry, new_entry]
@@ -290,10 +303,12 @@ class TestFetchAllFeeds:
         assert len(result) == 2
         assert result[0].title == "New article here"
 
+
 def test_fetch_feed_returns_empty_on_bozo_no_entries():
     from unittest.mock import MagicMock, patch
 
     from marketpulse.ingestion.news import fetch_feed
+
     mock_feed = MagicMock()
     mock_feed.bozo = True
     mock_feed.entries = []
@@ -302,17 +317,20 @@ def test_fetch_feed_returns_empty_on_bozo_no_entries():
         result = fetch_feed("https://bad-feed.com/rss")
     assert result == []
 
+
 def test_fetch_feed_continues_on_bozo_with_entries():
     import time as _time
     from unittest.mock import MagicMock, patch
 
     from marketpulse.ingestion.news import fetch_feed
+
     mock_feed = MagicMock()
     mock_feed.bozo = True
     mock_feed.bozo_exception = Exception("minor xml issue")
     entry = MagicMock()
     entry.get = lambda k, d="": {
-        "title": "Valid headline here", "link": "https://news.com/1"
+        "title": "Valid headline here",
+        "link": "https://news.com/1",
     }.get(k, d)
     entry.published_parsed = _time.gmtime()
     mock_feed.entries = [entry]

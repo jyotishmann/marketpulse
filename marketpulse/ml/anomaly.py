@@ -39,9 +39,9 @@ def train_anomaly_detector(
         Returns -1 (anomaly) or 1 (normal).
     """
     iso = IsolationForest(
-        n_estimators=100,                                  # number of trees
+        n_estimators=100,  # number of trees
         contamination=settings.ml_anomaly_contamination,  # expected anomaly fraction
-        max_samples="auto",    # use min(256, n_samples) samples per tree
+        max_samples="auto",  # use min(256, n_samples) samples per tree
         random_state=42,
         n_jobs=-1,
     )
@@ -108,7 +108,7 @@ def save_anomaly_detector(
             ticker=ticker,
             model_type="anomaly",
             file_path=file_path,
-            accuracy=None,   # unsupervised: no ground-truth labels → no accuracy
+            accuracy=None,  # unsupervised: no ground-truth labels → no accuracy
             is_active=True,
         )
     )
@@ -135,7 +135,8 @@ def load_anomaly_detector(ticker: str) -> IsolationForest | None:
     if not file_path.exists():
         logger.info(
             "No anomaly detector file for %s at %s",
-            ticker, file_path,
+            ticker,
+            file_path,
         )
         return None
 
@@ -147,6 +148,7 @@ def load_anomaly_detector(ticker: str) -> IsolationForest | None:
 
     logger.debug(
         "Loaded anomaly detector for %s (trained_at=%s)",
-        ticker, bundle.get("trained_at", "unknown"),
+        ticker,
+        bundle.get("trained_at", "unknown"),
     )
     return bundle["iso"]

@@ -102,7 +102,8 @@ class RedisClient:
             deleted = int(self._r.delete(*matching))
             logger.debug(
                 "delete_pattern: deleted %d keys matching %r",
-                deleted, pattern,
+                deleted,
+                pattern,
             )
             return deleted
         except redis.RedisError as exc:
@@ -129,7 +130,8 @@ class RedisClient:
         except json.JSONDecodeError as exc:
             logger.warning(
                 "Corrupt JSON in cache for key=%r (%s) — treating as miss",
-                key, exc,
+                key,
+                exc,
             )
             return None
 
@@ -161,6 +163,7 @@ class RedisClient:
             return bool(self._r.ping())
         except redis.RedisError:
             return False
+
 
 # ── cache-aside decorator ─────────────────────────────────────────────────────
 
@@ -199,6 +202,7 @@ def cached(
         def fetch_prices(ticker: str, limit: int = 100) -> list[dict]:
             ...
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -223,10 +227,12 @@ def cached(
             return result
 
         return wrapper  # type: ignore[return-value]
+
     return decorator
 
 
 # ── Convenience helpers ────────────────────────────────────────────────────────
+
 
 def invalidate_ticker(ticker: str) -> int:
     """
@@ -261,6 +267,7 @@ def invalidate_news() -> int:
 
 
 # ── Module-level singleton (created once per process) ─────────────────────────
+
 
 @functools.lru_cache(maxsize=None)  # noqa: UP033
 def _create_client() -> RedisClient:

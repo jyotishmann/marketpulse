@@ -48,7 +48,8 @@ class StockPrice(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     ticker: Mapped[str] = mapped_column(String(10), nullable=False)
     timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False   # TIMESTAMPTZ in PostgreSQL
+        DateTime(timezone=True),
+        nullable=False,  # TIMESTAMPTZ in PostgreSQL
     )
     # Exact decimals — never use Float for financial prices
     open: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
@@ -66,6 +67,7 @@ class StockPrice(Base):
             f"<StockPrice ticker={self.ticker!r} "
             f"timestamp={self.timestamp} close={self.close}>"
         )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Table 2: technical_indicators
@@ -108,6 +110,7 @@ class TechnicalIndicator(Base):
             f"timestamp={self.timestamp} rsi={self.rsi_14}>"
         )
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Table 3: news_articles
 # Financial news headlines from RSS feeds with VADER sentiment scores.
@@ -124,7 +127,9 @@ class NewsArticle(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     # unique=True prevents storing the same article twice across polling cycles
     source_url: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     # VADER sentiment scores — all values between -1.0 and +1.0
     sentiment_positive: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
@@ -142,6 +147,7 @@ class NewsArticle(Base):
             f"<NewsArticle id={self.id} "
             f"compound={self.sentiment_compound} title={self.title[:40]!r}>"
         )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Table 4: ml_signals
@@ -185,6 +191,7 @@ class MLSignal(Base):
             f"<MLSignal ticker={self.ticker!r} signal={self.signal!r} "
             f"confidence={self.confidence} anomaly={self.is_anomaly}>"
         )
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Table 5: model_registry

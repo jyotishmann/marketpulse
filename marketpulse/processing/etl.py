@@ -27,6 +27,7 @@ _vader = SentimentIntensityAnalyzer()
 # Section 1: OHLCV DataFrame utilities
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def rows_to_ohlcv_df(rows: list[RawOHLCVRow]) -> pd.DataFrame:
     """
     Convert a list of validated RawOHLCVRow objects to a cleaned pandas DataFrame.
@@ -72,9 +73,11 @@ def rows_to_ohlcv_df(rows: list[RawOHLCVRow]) -> pd.DataFrame:
     logger.debug("rows_to_ohlcv_df: %d rows after cleaning", len(df))
     return df
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Section 2: Database read/write for OHLCV data
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def load_recent_prices(
     ticker: str,
@@ -167,7 +170,7 @@ def upsert_prices(rows: list[RawOHLCVRow], session: Session) -> int:
     # pg_insert: PostgreSQL-specific INSERT supporting ON CONFLICT clauses
     stmt = pg_insert(StockPrice).values(records)
     stmt = stmt.on_conflict_do_nothing(
-        constraint="uq_stock_prices_ticker_ts",   # defined in 0001_initial migration
+        constraint="uq_stock_prices_ticker_ts",  # defined in 0001_initial migration
     )
 
     session.execute(stmt)
@@ -176,9 +179,11 @@ def upsert_prices(rows: list[RawOHLCVRow], session: Session) -> int:
     logger.info("upsert_prices: %d rows submitted for %s", len(records), rows[0].ticker)
     return len(records)
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Section 3: Sentiment scoring and news persistence
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def score_sentiment(text: str) -> dict[str, float]:
     """

@@ -23,6 +23,7 @@ router = APIRouter(prefix="/stocks", tags=["Signals"])
 # (defined BEFORE /{ticker}/signals to avoid path ambiguity)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/{ticker}/signals/latest")
 async def get_latest_signal(
     ticker: str,
@@ -49,7 +50,7 @@ async def get_latest_signal(
         db.query(MLSignal)
         .filter(MLSignal.ticker == ticker)
         .order_by(MLSignal.timestamp.desc())
-        .first()   # .first() → LIMIT 1 SQL, returns None if no rows
+        .first()  # .first() → LIMIT 1 SQL, returns None if no rows
     )
 
     if row is None:
@@ -66,7 +67,7 @@ async def get_latest_signal(
     result = {
         "ticker": row.ticker,
         "timestamp": row.timestamp.isoformat(),
-        "signal": row.signal,              # "BUY", "HOLD", or "SELL"
+        "signal": row.signal,  # "BUY", "HOLD", or "SELL"
         "confidence": float(row.confidence),
         "is_anomaly": row.is_anomaly,
         "model_version": row.model_version,
@@ -79,6 +80,7 @@ async def get_latest_signal(
 # ══════════════════════════════════════════════════════════════════════════════
 # GET /api/v1/stocks/{ticker}/signals — signal history timeline
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/{ticker}/signals")
 async def get_signals(

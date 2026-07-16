@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # ── Internal helper ────────────────────────────────────────────────────────────
 
+
 def _parse_entry_date(entry: feedparser.util.FeedParserDict) -> datetime:
     """
     Extract a timezone-aware UTC datetime from a feedparser entry.
@@ -40,7 +41,9 @@ def _parse_entry_date(entry: feedparser.util.FeedParserDict) -> datetime:
             utc_ts = calendar.timegm(entry.published_parsed)
             return datetime.fromtimestamp(utc_ts, tz=UTC)
         except (TypeError, OverflowError, OSError):
-            logger.debug("published_parsed conversion failed for: %s", entry.get("link"))
+            logger.debug(
+                "published_parsed conversion failed for: %s", entry.get("link")
+            )
 
     # Attempt 2: parse the raw published string (RFC 2822 format from RSS 2.0)
     if entry.get("published"):
@@ -52,11 +55,14 @@ def _parse_entry_date(entry: feedparser.util.FeedParserDict) -> datetime:
             logger.debug("parsedate_to_datetime failed for: %r", entry.get("published"))
 
     # Attempt 3: fallback to current UTC time
-    logger.debug("No parseable date for entry: %r — using now()", entry.get("link", "?"))
+    logger.debug(
+        "No parseable date for entry: %r — using now()", entry.get("link", "?")
+    )
     return datetime.now(tz=UTC)
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def fetch_feed(url: str) -> list[RawNewsItem]:
     """
@@ -85,13 +91,15 @@ def fetch_feed(url: str) -> list[RawNewsItem]:
             # Truly broken — no entries could be extracted
             logger.error(
                 "Unparseable RSS feed at %s (bozo_exception: %s)",
-                url, getattr(feed, "bozo_exception", "unknown"),
+                url,
+                getattr(feed, "bozo_exception", "unknown"),
             )
             return []
         # Bozo but has entries — log and continue (common with real-world feeds)
         logger.warning(
             "Malformed XML in feed %s (bozo_exception: %s) — parsing anyway",
-            url, getattr(feed, "bozo_exception", "unknown"),
+            url,
+            getattr(feed, "bozo_exception", "unknown"),
         )
 
     # ── Step 2: Validate each entry with pydantic ─────────────────────────────
@@ -108,11 +116,13 @@ def fetch_feed(url: str) -> list[RawNewsItem]:
             # Skip entries that fail validation — log at DEBUG to avoid log spam
             logger.debug(
                 "Skipping invalid RSS entry from %s: %s",
-                url, exc,
+                url,
+                exc,
             )
 
     logger.info("Parsed %d valid items from %s", len(items), url)
     return items
+
 
 def fetch_all_feeds(urls: list[str]) -> list[RawNewsItem]:
     """
@@ -162,8 +172,7 @@ def fetch_all_feeds(urls: list[str]) -> list[RawNewsItem]:
     all_items.sort(key=lambda x: x.published_at, reverse=True)
 
     logger.info(
-        "Fetched %d unique articles from %d feed(s) "
-        "(%d total before deduplication)",
+        "Fetched %d unique articles from %d feed(s) (%d total before deduplication)",
         len(all_items),
         len(urls),
         sum(1 for _ in seen_urls),  # == len(all_items), but explicit

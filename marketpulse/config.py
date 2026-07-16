@@ -18,7 +18,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore",          # don't crash on extra env vars (e.g. CI injections)
+        extra="ignore",  # don't crash on extra env vars (e.g. CI injections)
     )
 
     # ── Database ───────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # ── Tickers & Data Sources ─────────────────────────────────────────────────
     tickers: str = "AAPL,GOOGL,MSFT,TSLA"
-    rss_feed_urls: str = ""      # empty default = no news ingestion until configured
+    rss_feed_urls: str = ""  # empty default = no news ingestion until configured
 
     # ── Schedule (in minutes) ──────────────────────────────────────────────────
     schedule_stock_minutes: int = 15
@@ -37,10 +37,10 @@ class Settings(BaseSettings):
     schedule_ml_minutes: int = 60
 
     # ── Cache TTLs (in seconds) ────────────────────────────────────────────────
-    cache_ttl_prices: int = 300       # 5 minutes
-    cache_ttl_indicators: int = 300   # 5 minutes
-    cache_ttl_signals: int = 3600     # 1 hour
-    cache_ttl_news: int = 600         # 10 minutes
+    cache_ttl_prices: int = 300  # 5 minutes
+    cache_ttl_indicators: int = 300  # 5 minutes
+    cache_ttl_signals: int = 3600  # 1 hour
+    cache_ttl_news: int = 600  # 10 minutes
 
     # ── Machine Learning ───────────────────────────────────────────────────────
     model_dir: str = "./models"

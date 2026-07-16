@@ -62,6 +62,7 @@ def get_prediction_service() -> PredictionService:
 # Job 1: Stock data ingestion + indicator computation (every N minutes)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def ingest_stock_data() -> None:
     """
     Scheduled job: fetch OHLCV bars, compute indicators, write to DB, bust cache.
@@ -108,8 +109,7 @@ def ingest_stock_data() -> None:
                 # keep="last": fresh data overrides history for same timestamp
                 # (handles price adjustments from splits/dividends)
                 combined = (
-                    combined
-                    .drop_duplicates(subset=["timestamp"], keep="last")
+                    combined.drop_duplicates(subset=["timestamp"], keep="last")
                     .sort_values("timestamp")
                     .reset_index(drop=True)
                 )
@@ -119,7 +119,10 @@ def ingest_stock_data() -> None:
 
             logger.debug(
                 "  %s combined DataFrame: %d rows (hist=%d, fresh=%d)",
-                ticker, len(combined), len(hist_df), len(fresh_df),
+                ticker,
+                len(combined),
+                len(hist_df),
+                len(fresh_df),
             )
 
             # ── Step 5: Compute all 10 technical indicators ────────────────────
@@ -140,9 +143,11 @@ def ingest_stock_data() -> None:
 
     logger.info("◀ ingest_stock_data() completed")
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Job 2: News ingestion + sentiment scoring (every N minutes)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def ingest_news() -> None:
     """
@@ -188,6 +193,7 @@ def ingest_news() -> None:
 # Job 3: ML pipeline — train models + generate signals (every N minutes)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def run_ml_pipeline() -> None:
     """
     Scheduled job: retrain models for all tickers, generate and save fresh signals.
@@ -219,11 +225,14 @@ def run_ml_pipeline() -> None:
                 logger.warning(
                     "  %s: %d usable rows (minimum 50) — skipping ML pipeline. "
                     "Run more ingestion cycles to accumulate data.",
-                    ticker, len(X) if not X.empty else 0,
+                    ticker,
+                    len(X) if not X.empty else 0,
                 )
                 continue
 
-            logger.info("  %s: %d feature rows, %d features", ticker, len(X), len(feature_names))
+            logger.info(
+                "  %s: %d feature rows, %d features", ticker, len(X), len(feature_names)
+            )
 
             # ── Step 2: Train BUY/HOLD/SELL classifier ────────────────────────
             try:
@@ -252,7 +261,10 @@ def run_ml_pipeline() -> None:
                 service.save_signal(result, session)
                 logger.info(
                     "  %s signal: %s (conf=%.2f, anomaly=%s)",
-                    ticker, result["signal"], result["confidence"], result["is_anomaly"],
+                    ticker,
+                    result["signal"],
+                    result["confidence"],
+                    result["is_anomaly"],
                 )
             else:
                 logger.warning("  %s: predict() returned None after retraining", ticker)
@@ -264,9 +276,11 @@ def run_ml_pipeline() -> None:
 
     logger.info("◀ run_ml_pipeline() completed")
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Job 4: Startup warmup (fires once immediately when scheduler starts)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def warmup_cache() -> None:
     """
@@ -318,6 +332,7 @@ def warmup_cache() -> None:
 # Scheduler factory
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def create_scheduler() -> AsyncIOScheduler:
     """
     Create and configure the APScheduler AsyncIOScheduler.
@@ -349,8 +364,8 @@ def create_scheduler() -> AsyncIOScheduler:
 
     # Shared job defaults: prevent overlapping and catch-up storms
     job_defaults = {
-        "max_instances": 1,      # never run two instances of the same job
-        "coalesce": True,        # if missed runs: fire once, not N times
+        "max_instances": 1,  # never run two instances of the same job
+        "coalesce": True,  # if missed runs: fire once, not N times
         "misfire_grace_time": 120,  # allow 2 minutes of lateness before skipping
     }
 
@@ -358,7 +373,7 @@ def create_scheduler() -> AsyncIOScheduler:
     # DateTrigger without run_date → fires immediately when scheduler.start() is called
     scheduler.add_job(
         func=warmup_cache,
-        trigger=DateTrigger(),   # run_date defaults to "now"
+        trigger=DateTrigger(),  # run_date defaults to "now"
         id="warmup_cache",
         replace_existing=True,
         **job_defaults,
@@ -392,8 +407,7 @@ def create_scheduler() -> AsyncIOScheduler:
     )
 
     logger.info(
-        "Scheduler configured: "
-        "stock=every %dmin | news=every %dmin | ml=every %dmin",
+        "Scheduler configured: stock=every %dmin | news=every %dmin | ml=every %dmin",
         settings.schedule_stock_minutes,
         settings.schedule_news_minutes,
         settings.schedule_ml_minutes,

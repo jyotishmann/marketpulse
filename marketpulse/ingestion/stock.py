@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 # ── Internal helper ────────────────────────────────────────────────────────────
 
+
 def _to_flat_df(raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
     """
     Normalise a yfinance DataFrame to a flat structure we can iterate over.
@@ -40,10 +41,7 @@ def _to_flat_df(raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     # Flatten MultiIndex columns: ("Open", "AAPL") → "Open"
     if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [
-            col[0] if isinstance(col, tuple) else col
-            for col in df.columns
-        ]
+        df.columns = [col[0] if isinstance(col, tuple) else col for col in df.columns]
 
     # Rename yfinance column names to our internal snake_case names
     rename_map = {
@@ -64,6 +62,7 @@ def _to_flat_df(raw: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def fetch_ohlcv(
     ticker: str,
@@ -88,7 +87,9 @@ def fetch_ohlcv(
         List of validated RawOHLCVRow objects. Returns [] on any error
         (connection failure, empty response, all rows invalid).
     """
-    logger.info("yfinance.download('%s', period='%s', interval='%s')", ticker, period, interval)
+    logger.info(
+        "yfinance.download('%s', period='%s', interval='%s')", ticker, period, interval
+    )
 
     # ── Step 1: Fetch raw data from Yahoo Finance ─────────────────────────────
     try:
@@ -96,7 +97,7 @@ def fetch_ohlcv(
             ticker,
             period=period,
             interval=interval,
-            progress=False,    # suppress tqdm progress bar in container logs
+            progress=False,  # suppress tqdm progress bar in container logs
             auto_adjust=True,  # adjust for splits and dividends (continuous chart)
         )
     except Exception:
@@ -105,7 +106,9 @@ def fetch_ohlcv(
         return []
 
     if raw.empty:
-        logger.warning("yfinance returned empty DataFrame for %s (market closed?)", ticker)
+        logger.warning(
+            "yfinance returned empty DataFrame for %s (market closed?)", ticker
+        )
         return []
 
     # ── Step 2: Normalise the DataFrame structure ─────────────────────────────
@@ -118,7 +121,8 @@ def fetch_ohlcv(
     if len(df) < before_drop:
         logger.warning(
             "Dropped %d rows with NaN values for %s",
-            before_drop - len(df), ticker,
+            before_drop - len(df),
+            ticker,
         )
 
     # ── Step 3: Validate each row with pydantic ───────────────────────────────
@@ -141,7 +145,9 @@ def fetch_ohlcv(
             # Log at DEBUG level — individual bad rows are expected occasionally
             logger.debug(
                 "Skipping invalid bar for %s at %s: %s",
-                ticker, row.get("timestamp"), exc.errors()[0]["msg"],
+                ticker,
+                row.get("timestamp"),
+                exc.errors()[0]["msg"],
             )
             skipped += 1
 
@@ -150,6 +156,7 @@ def fetch_ohlcv(
 
     logger.info("Fetched and validated %d bars for %s", len(validated), ticker)
     return validated
+
 
 def fetch_multiple_tickers(
     tickers: list[str],
@@ -189,6 +196,9 @@ def fetch_multiple_tickers(
     logger.info(
         "fetch_multiple_tickers: %d total bars across %d tickers "
         "(successful: %s, no data: %s)",
-        total_bars, len(tickers), successful, failed,
+        total_bars,
+        len(tickers),
+        successful,
+        failed,
     )
     return results

@@ -7,6 +7,7 @@ Revision ID: 31a8d4f6b2c9
 Revises:
 Create Date: 2024-01-15 10:00:00.000000
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -16,7 +17,7 @@ from alembic import op
 
 # Revision chain identifiers — Alembic uses these to order migrations
 revision: str = "31a8d4f6b2c9"
-down_revision: str | None = None      # first migration: nothing before it
+down_revision: str | None = None  # first migration: nothing before it
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -44,7 +45,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("ticker", "timestamp", name="uq_stock_prices_ticker_ts"),
     )
-    op.create_index("ix_stock_prices_ticker_ts", "stock_prices", ["ticker", "timestamp"])
+    op.create_index(
+        "ix_stock_prices_ticker_ts", "stock_prices", ["ticker", "timestamp"]
+    )
 
     # ── Table 2: technical_indicators ─────────────────────────────────────────
     op.create_table(

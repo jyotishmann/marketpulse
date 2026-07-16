@@ -24,6 +24,7 @@ from marketpulse.ml.features import FEATURE_COLS, LOOKAHEAD, _make_labels  # noq
 # Label generation tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestMakeLabels:
     """Tests for the forward-looking label generator."""
 
@@ -31,6 +32,7 @@ class TestMakeLabels:
         import pandas as pd
 
         from marketpulse.ml.features import LOOKAHEAD, _make_labels  # noqa: F811
+
         close = pd.Series([float(i) for i in range(50, 100)])
         labels = _make_labels(close)
         # Last LOOKAHEAD rows should all be NaN
@@ -43,6 +45,7 @@ class TestMakeLabels:
         import pandas as pd
 
         from marketpulse.ml.features import LOOKAHEAD, _make_labels  # noqa: F811
+
         close = pd.Series([float(i) for i in range(50, 100)])
         labels = _make_labels(close)
         # All rows except last LOOKAHEAD should have a value
@@ -62,13 +65,13 @@ class TestMakeLabels:
     def test_all_gains_produces_buy_labels(self):
         """A strictly rising price series should produce all BUY labels."""
         # Large gains (> 0.5%) on every bar → all BUY
-        close = pd.Series([100.0 * (1.01 ** i) for i in range(30)])
+        close = pd.Series([100.0 * (1.01**i) for i in range(30)])
         labels = _make_labels(close, threshold=0.005).dropna()
         assert (labels == 1.0).all()
 
     def test_all_losses_produces_sell_labels(self):
         """A strictly falling price series should produce all SELL labels."""
-        close = pd.Series([100.0 * (0.99 ** i) for i in range(30)])
+        close = pd.Series([100.0 * (0.99**i) for i in range(30)])
         labels = _make_labels(close, threshold=0.005).dropna()
         assert (labels == -1.0).all()
 
@@ -76,6 +79,7 @@ class TestMakeLabels:
 # ══════════════════════════════════════════════════════════════════════════════
 # build_feature_matrix() tests (mocked session)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestBuildFeatureMatrix:
     """Tests for feature matrix construction — uses mocked DB session."""
@@ -116,6 +120,7 @@ class TestBuildFeatureMatrix:
 # Classifier training tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestTrainClassifier:
     """Tests for RandomForest BUY/HOLD/SELL classifier training."""
 
@@ -155,7 +160,9 @@ class TestTrainClassifier:
     def test_raises_on_insufficient_data(self):
         from marketpulse.ml.classifier import train_classifier
 
-        tiny_X = pd.DataFrame(np.random.randn(10, len(FEATURE_COLS)), columns=FEATURE_COLS)
+        tiny_X = pd.DataFrame(
+            np.random.randn(10, len(FEATURE_COLS)), columns=FEATURE_COLS
+        )
         tiny_y = pd.Series([1, 0, -1, 1, 0, -1, 1, 0, -1, 1])
 
         with pytest.raises(ValueError, match="Insufficient data"):
@@ -165,6 +172,7 @@ class TestTrainClassifier:
 # ══════════════════════════════════════════════════════════════════════════════
 # Anomaly detector tests
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestTrainAnomalyDetector:
     """Tests for IsolationForest anomaly detector training."""
@@ -202,10 +210,13 @@ class TestTrainAnomalyDetector:
 # PredictionService tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestPredictionService:
     """Tests for the lazy-loading PredictionService."""
 
-    def test_predict_returns_none_when_no_model(self, tmp_path, feature_df, monkeypatch):
+    def test_predict_returns_none_when_no_model(
+        self, tmp_path, feature_df, monkeypatch
+    ):
         """If no .pkl file exists, predict() should return None (not raise)."""
         from marketpulse.ml.service import PredictionService
 
@@ -216,7 +227,9 @@ class TestPredictionService:
 
         assert result is None
 
-    def test_predict_returns_valid_signal(self, tmp_path, feature_df, feature_labels, monkeypatch):
+    def test_predict_returns_valid_signal(
+        self, tmp_path, feature_df, feature_labels, monkeypatch
+    ):
         """After training + saving, predict() should return a PredictionResult."""
         from unittest.mock import MagicMock  # noqa: F811
 
@@ -240,18 +253,20 @@ class TestPredictionService:
         assert 0.0 <= result["confidence"] <= 1.0
         assert isinstance(result["is_anomaly"], bool)
 
-    def test_invalidate_cache_clears_specific_ticker(self, feature_df, monkeypatch, tmp_path):
+    def test_invalidate_cache_clears_specific_ticker(
+        self, feature_df, monkeypatch, tmp_path
+    ):
         monkeypatch.setenv("MODEL_DIR", str(tmp_path))
         from marketpulse.ml.service import PredictionService
 
         service = PredictionService()
-        service._classifiers["AAPL"] = object()   # put something in cache
+        service._classifiers["AAPL"] = object()  # put something in cache
         service._classifiers["MSFT"] = object()
 
         service.invalidate_cache("AAPL")
 
         assert "AAPL" not in service._classifiers
-        assert "MSFT" in service._classifiers   # MSFT unaffected
+        assert "MSFT" in service._classifiers  # MSFT unaffected
 
     def test_invalidate_all_clears_everything(self, monkeypatch, tmp_path):
         monkeypatch.setenv("MODEL_DIR", str(tmp_path))
@@ -266,51 +281,69 @@ class TestPredictionService:
         assert not service._classifiers
         assert not service._anomaly_detectors
 
+
 def test_feature_cols_count():
     from marketpulse.ml.features import FEATURE_COLS
+
     assert len(FEATURE_COLS) == 8
+
 
 def test_make_labels_length_matches_input():
     import pandas as pd
 
     from marketpulse.ml.features import _make_labels
+
     close = pd.Series([100.0 + i for i in range(50)])
     labels = _make_labels(close)
     assert len(labels) == len(close)
 
+
 def test_lookahead_constant_is_positive():
     from marketpulse.ml.features import LOOKAHEAD  # noqa: F811
+
     assert LOOKAHEAD > 0
+
 
 def test_threshold_constant_is_positive():
     from marketpulse.ml.features import THRESHOLD
+
     assert 0 < THRESHOLD < 1
+
 
 def test_save_anomaly_detector_writes_file(feature_df, tmp_path, monkeypatch):
     from unittest.mock import MagicMock  # noqa: F811
+
     monkeypatch.setenv("MODEL_DIR", str(tmp_path))
     from marketpulse.config import get_settings
+
     get_settings.cache_clear()
     from marketpulse.ml.anomaly import save_anomaly_detector, train_anomaly_detector
+
     iso = train_anomaly_detector(feature_df, "AAPL_TEST")
     mock_session = MagicMock()
     mock_session.query.return_value.filter.return_value.update.return_value = 0
     path = save_anomaly_detector(iso, "AAPL_TEST", mock_session)
     import os  # noqa: F811
+
     assert os.path.exists(path)
     get_settings.cache_clear()
+
 
 def test_load_anomaly_detector_returns_none_when_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("MODEL_DIR", str(tmp_path))
     from marketpulse.config import get_settings
+
     get_settings.cache_clear()
     from marketpulse.ml.anomaly import load_anomaly_detector
+
     result = load_anomaly_detector("NONEXISTENT")
     assert result is None
     get_settings.cache_clear()
 
+
 def test_build_feature_matrix_feature_cols_constant():
     from marketpulse.ml.features import FEATURE_COLS, LOOKAHEAD, THRESHOLD  # noqa: F811
+
     assert len(FEATURE_COLS) == 8
     assert LOOKAHEAD > 0
     assert 0 < THRESHOLD < 1

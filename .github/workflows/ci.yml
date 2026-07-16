@@ -106,16 +106,16 @@ jobs:
       - name: Start test services (PostgreSQL + Redis)
         run: docker compose -f docker-compose.test.yml up -d --wait
 
-      - name: Apply migrations to test database
-        # DATABASE_URL inherited from top-level env block (points to port 5433)
-        run: alembic upgrade head
-
       - name: Install test dependencies
         run: pip install -e ".[test]"
 
       - name: Download NLTK VADER lexicon
         # Bake into the test environment — avoids runtime downloads in tests
         run: python -c "import nltk; nltk.download('vader_lexicon', quiet=True)"
+
+      - name: Apply migrations to test database
+        # DATABASE_URL inherited from top-level env block (points to port 5433)
+        run: alembic upgrade head
 
       - name: Run tests with coverage
         run: |
